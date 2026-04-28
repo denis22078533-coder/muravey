@@ -1,67 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <base href="https://denis22078533-coder.github.io/lumin-platform/">
-    <meta charset="UTF-8">
+    <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-    <title>Магазин</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100">
-    
-    <!-- Block of Discounts -->
-    <div class="bg-yellow-400 text-black text-center p-3 font-bold">
-        Скидки до 50% на все товары сегодня!
+    <title>MOTO FEED — Мотоспорт</title>
+    <meta name="description" content="Мотоспорт и автоспорт — события, гонки, трансляции"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <meta name="author" content="poehali.dev"/>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <meta property="og:title" content="Поехали!">
+    <meta property="og:description" content="Ваш личный программист, который делает сайты в 30 раз быстрее обычного.">
+    <meta property="og:image:width" content="4800">
+    <meta property="og:image:height" content="2520">
+    <meta property="og:image:alt" content="Поехали! — сервис разработки сайтов с помощью ИИ">
+    <meta property="og:image" content="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/files/og-image-1777188762295.jpg">
+    <meta name="twitter:image" content="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/files/og-image-1777188762295.jpg">
+
+    <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS COMMENT! -->
+
+    <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS COMMENT! -->
+    <script src="https://cdn.poehali.dev/intertnal/js/pp-min-2.js"></script>
+    <script src="https://cdn.poehali.dev/intertnal/js/route-min.js"></script>
+    <script src="https://cdn.poehali.dev/intertnal/js/telemetry-min.js"></script>
+    <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS COMMENT! -->
+
+    <meta name="pp-name" value="motorsport-progress-app">
+      <script src="https://cdn.poehali.dev/intertnal/js/inspector-min.js"></script>
+    <script type="module" crossorigin src="/assets/index-Czlibv5I.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DIrAyv_s.css">
+  </head>
+
+<body>
+<header>
+    <div class="header-container">
+        <h1>MOTO FEED — Мотоспорт</h1>
+        <div class="cart-status">Корзина: <span id="cart-count">0</span> товаров</div>
     </div>
+</header>
+<div id="root">
+    <div class="product">
+        <h2>Продукт 1</h2>
+        <button class="add-to-cart">Добавить в корзину</button>
+    </div>
+    <div class="product">
+        <h2>Продукт 2</h2>
+        <button class="add-to-cart">Добавить в корзину</button>
+    </div>
+    <div class="product">
+        <h2>Продукт 3</h2>
+        <button class="add-to-cart">Добавить в корзину</button>
+    </div>
+</div>
 
-    <!-- Navigation -->
-    <header class="bg-blue-600 text-white p-4 flex justify-between items-center">
-        <h1 class="text-lg font-bold">Лумин Магазин</h1>
-        <div>
-            <button class="bg-white text-blue-600 px-4 py-2 rounded">Корзина</button>
-        </div>
-    </header>
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function (m, e, t, r, i, k, a) {
+        m[i] = m[i] || function () {
+            (m[i].a = m[i].a || []).push(arguments)
+        };
+        m[i].l = 1 * new Date();
+        for (var j = 0; j < document.scripts.length; j++) {
+            if (document.scripts[j].src === r) {
+                return;
+            }
+        }
+        k = e.createElement(t), a = e.getElementsByTagName(t)[0], k.async = 1, k.src = r, a.parentNode.insertBefore(k, a)
+    })
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
 
-    <!-- Product Grid -->
-    <main class="p-6">
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            <!-- Product Card -->
-            <div class="bg-white rounded-lg shadow p-4">
-                <img src="/images/apples.jpg" alt="Яблоки" class="w-full h-32 object-cover rounded-t">
-                <div class="mt-2">
-                    <h2 class="text-lg font-bold">Яблоки</h2>
-                    <p class="text-gray-600">Цена: 100 руб./кг</p>
-                </div>
-            </div>
+    ym(101026698, "init", {
+        trustedDomains: ["poehali.dev"],
+        clickmap: true,
+        trackLinks: true,
+        accurateTrackBounce: true,
+        webvisor: true,
+        trackHash: true
+    });
+</script>
+<noscript>
+    <div><img src="https://mc.yandex.ru/watch/101026698" style="position:absolute; left:-9999px;" alt=""/></div>
+</noscript>
+<!-- /Yandex.Metrika counter -->
 
-            <!-- Product Card -->
-            <div class="bg-white rounded-lg shadow p-4">
-                <img src="/images/bread.jpg" alt="Хлеб" class="w-full h-32 object-cover rounded-t">
-                <div class="mt-2">
-                    <h2 class="text-lg font-bold">Хлеб</h2>
-                    <p class="text-gray-600">Цена: 50 руб./шт</p>
-                </div>
-            </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        let cartCount = 0;
+        const cartCountElement = document.getElementById('cart-count');
+        const addToCartButtons = document.querySelectorAll('.add-to-cart');
 
-            <!-- Product Card -->
-            <div class="bg-white rounded-lg shadow p-4">
-                <img src="/images/milk.jpg" alt="Молоко" class="w-full h-32 object-cover rounded-t">
-                <div class="mt-2">
-                    <h2 class="text-lg font-bold">Молоко</h2>
-                    <p class="text-gray-600">Цена: 80 руб./л</p>
-                </div>
-            </div>
-
-            <!-- Product Card -->
-            <div class="bg-white rounded-lg shadow p-4">
-                <img src="/images/bananas.jpg" alt="Бананы" class="w-full h-32 object-cover rounded-t">
-                <div class="mt-2">
-                    <h2 class="text-lg font-bold">Бананы</h2>
-                    <p class="text-gray-600">Цена: 120 руб./кг</p>
-                </div>
-            </div>
-        </div>
-    </main>
-
+        addToCartButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                cartCount++;
+                cartCountElement.textContent = cartCount;
+                alert('Товар добавлен!');
+            });
+        });
+    });
+</script>
 </body>
 </html>
