@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Магазин свежих продуктов</title>
+    <title>Кофейня</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -15,13 +15,12 @@
         header {
             text-align: center;
             padding: 20px;
-            background-color: #ffcc00;
+            background-color: #8b4513;
+            color: white;
         }
         header h1 {
             margin: 0;
-            font-size: 2rem;
-            color: #333;
-            font-weight: 700;
+            font-size: 2.5rem;
         }
         .banner {
             width: 100%;
@@ -36,7 +35,7 @@
             height: 100%;
             object-fit: cover;
         }
-        .product-section {
+        .menu-section {
             max-width: 1200px;
             margin: 20px auto;
             padding: 0 20px;
@@ -44,186 +43,65 @@
             flex-wrap: wrap;
             gap: 20px;
         }
-        .product-card {
-            flex: 1 1 calc(25% - 20px);
-            max-width: calc(25% - 20px);
+        .menu-card {
+            flex: 1 1 calc(33.33% - 20px);
+            max-width: calc(33.33% - 20px);
             background: #ffffff;
             border: 1px solid #ddd;
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             overflow: hidden;
         }
-        .product-card img {
+        .menu-card img {
             width: 100%;
             height: 200px;
             object-fit: cover;
         }
-        .product-card .details {
+        .menu-card .details {
             padding: 15px;
             text-align: center;
         }
-        .product-card .details h2 {
-            font-size: 1.2rem;
+        .menu-card .details h2 {
+            font-size: 1.5rem;
             margin: 10px 0;
             color: #444;
         }
-        .product-card .details .price {
+        .menu-card .details .price {
             color: #ff5555;
             font-size: 1rem;
             font-weight: 500;
-        }
-        .product-card .details .buttons {
-            margin-top: 10px;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-        }
-        .product-card .details button {
-            padding: 8px 15px;
-            font-size: 0.9rem;
-            color: white;
-            background-color: #4caf50;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .product-card .details button:hover {
-            background-color: #45a049;
-        }
-        .cart-section {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #ffcc00;
-            padding: 15px 20px;
-            border-radius: 50px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-            color: #333;
-            font-size: 1rem;
-            font-weight: 500;
-            cursor: pointer;
         }
     </style>
 </head>
 <body>
     <header>
-        <h1>Магазин свежих продуктов</h1>
+        <h1>Кофейня</h1>
     </header>
     <div class="banner">
-        <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/6fdf08ec-2a49-4711-9276-4dcb7593ce3f.jpg" alt="Главный баннер">
+        <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/4b589d82-1b38-4cc4-a817-6a43847a3be7.jpg" alt="Главный баннер">
     </div>
-    <section class="product-section">
-        <div class="product-card">
-            <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/c06a7abd-961d-496c-864c-fae51a0d5162.jpg" alt="Товар 1">
+    <section class="menu-section">
+        <div class="menu-card">
+            <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/7f9d786c-41cb-490c-833f-be92358c8323.jpg" alt="Кофе амаретто">
             <div class="details">
-                <h2>Свежая морковь</h2>
-                <p class="price">50 руб/кг</p>
-                <div class="buttons">
-                    <button>−</button>
-                    <span>1</span>
-                    <button>+</button>
-                </div>
+                <h2>Кофе Амаретто</h2>
+                <p class="price">150 руб</p>
             </div>
         </div>
-        <div class="product-card">
-            <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/4fe0aefe-da3c-4490-8fc2-167826a2828a.jpg" alt="Товар 2">
+        <div class="menu-card">
+            <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/289c2226-6f65-47fd-971f-e06d717a4b0e.jpg" alt="Капучино">
             <div class="details">
-                <h2>Хрустящие огурцы</h2>
-                <p class="price">40 руб/кг</p>
-                <div class="buttons">
-                    <button>−</button>
-                    <span>1</span>
-                    <button>+</button>
-                </div>
+                <h2>Капучино</h2>
+                <p class="price">120 руб</p>
             </div>
         </div>
-        <div class="product-card">
-            <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/1bd787b0-d2b2-43c3-bd1f-5ac30989b895.jpg" alt="Товар 3">
+        <div class="menu-card">
+            <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/4b589d82-1b38-4cc4-a817-6a43847a3be7.jpg" alt="Эспрессо">
             <div class="details">
-                <h2>Свежие помидоры</h2>
-                <p class="price">80 руб/кг</p>
-                <div class="buttons">
-                    <button>−</button>
-                    <span>1</span>
-                    <button>+</button>
-                </div>
-            </div>
-        </div>
-        <div class="product-card">
-            <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/de9b172f-e6ff-4d6a-a0b4-2efd480b1550.jpg" alt="Товар 4">
-            <div class="details">
-                <h2>Отборные яблоки</h2>
-                <p class="price">70 руб/кг</p>
-                <div class="buttons">
-                    <button>−</button>
-                    <span>1</span>
-                    <button>+</button>
-                </div>
-            </div>
-        </div>
-        <div class="product-card">
-            <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/5ae5a5a6-cf3c-470f-9565-19196b11cf0d.jpg" alt="Товар 5">
-            <div class="details">
-                <h2>Мягкий хлеб</h2>
-                <p class="price">30 руб</p>
-                <div class="buttons">
-                    <button>−</button>
-                    <span>1</span>
-                    <button>+</button>
-                </div>
-            </div>
-        </div>
-        <div class="product-card">
-            <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/7cceaf06-2700-4127-bf53-68615f87ff16.jpg" alt="Товар 6">
-            <div class="details">
-                <h2>Красный перец</h2>
-                <p class="price">90 руб/кг</p>
-                <div class="buttons">
-                    <button>−</button>
-                    <span>1</span>
-                    <button>+</button>
-                </div>
-            </div>
-        </div>
-        <div class="product-card">
-            <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/937f97b8-e665-4d59-a876-5eb595091a78.jpg" alt="Товар 7">
-            <div class="details">
-                <h2>Арбузы</h2>
-                <p class="price">30 руб/кг</p>
-                <div class="buttons">
-                    <button>−</button>
-                    <span>1</span>
-                    <button>+</button>
-                </div>
-            </div>
-        </div>
-        <div class="product-card">
-            <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/b7f2b09f-6a50-422e-9f73-bb639d36f8cb.jpg" alt="Товар 8">
-            <div class="details">
-                <h2>Картофель</h2>
-                <p class="price">25 руб/кг</p>
-                <div class="buttons">
-                    <button>−</button>
-                    <span>1</span>
-                    <button>+</button>
-                </div>
-            </div>
-        </div>
-        <div class="product-card">
-            <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/094ed860-616a-4b5f-84ba-05498948bc4f.jpg" alt="Товар 9">
-            <div class="details">
-                <h2>Свежая петрушка</h2>
-                <p class="price">20 руб/пучок</p>
-                <div class="buttons">
-                    <button>−</button>
-                    <span>1</span>
-                    <button>+</button>
-                </div>
+                <h2>Эспрессо</h2>
+                <p class="price">100 руб</p>
             </div>
         </div>
     </section>
-    <div class="cart-section">
-        🛒 Корзина (0)
-    </div>
 </body>
 </html>
