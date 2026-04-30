@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тест связи</title>
+    <title>Транспортная Компания</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -13,17 +13,41 @@
         h1 {
             font-size: 2.5rem;
         }
+
+        .hero {
+            height: 400px;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
     </style>
 </head>
-<body class="bg-white text-gray-800 flex flex-col items-center justify-center min-h-screen">
+<body class="bg-white text-gray-800 flex flex-col items-center">
     <header class="mb-8">
-        <h1 class="font-bold">ТЕСТ СВЯЗИ ПРОЙДЕН</h1>
+        <h1 class="font-bold">Транспортная Компания</h1>
     </header>
-    <main class="w-full max-w-lg text-center">
-        <a href="#!" class="bg-green-500 text-white px-4 py-2 rounded shadow hover:bg-green-400">Работает!</a>
+    <main class="w-full max-w-4xl text-center">
+        <section class="hero overflow-hidden mb-8">
+            <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/305ab678-7764-4c2f-90c1-1dd75844c5ae.jpg" alt="Главный баннер" class="w-full h-full object-cover">
+        </section>
+        <section class="mb-8">
+            <h2 class="text-xl font-semibold">Калькулятор доставки</h2>
+            <!-- Здесь можно добавить форму калькулятора -->
+            <div class="mt-4">
+                <input type="text" placeholder="Введите расстояние (км)" class="border rounded px-4 py-2 w-1/4">
+                <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-400">Рассчитать</button>
+            </div>
+        </section>
+        <section class="gallery">
+            <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/25cfba5d-0caf-4bfa-bc39-4dda3b78880d.jpg" alt="Изображение 1" style="width: 100%; height: 200px; object-fit: cover;">
+            <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/f75dead9-21d3-43a5-ab61-78f7637ff322.jpg" alt="Изображение 2" style="width: 100%; height: 200px; object-fit: cover;">
+        </section>
     </main>
     <footer class="mt-8 text-sm">
-        <p>© 2023 Тестовая страница. Все права защищены.</p>
+        <p>© 2023 Транспортная компания. Все права защищены.</p>
     </footer>
     <script>
         // Здесь можно добавить интерактивные элементы JavaScript
