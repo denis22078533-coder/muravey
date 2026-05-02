@@ -31,122 +31,162 @@
             opacity: 1;
             transform: translateY(0);
         }
+
+        .calendar td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #ddd;
+            cursor: pointer;
+        }
+        .calendar td:hover {
+            background-color: #f3f3f3;
+        }
+        .calendar th {
+            padding: 10px;
+            background-color: #f9fafb;
+            border: 1px solid #ddd;
+        }
+        .slot {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+        .slot:hover {
+            background-color: #f3f3f3;
+        }
     </style>
-<style data-lumen-fix>
-      html,body{background:#ffffff!important;color:#111111!important;}
-    </style></head>
+</head>
 <body class="bg-gray-50 text-gray-900">
     <!-- Hero Section -->
     <section class="relative">
-        <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/b081bc9e-d8d2-4237-8f7a-6bbfcf7a3703.jpg" alt="Лёха амов делает скидки" class="w-full hero-image">
+        <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/79ecc9cf-0244-4c20-8eea-7d430310c9fd.jpg" alt="Фитнес-клуб Тонус" class="w-full hero-image">
         <div class="absolute inset-0 bg-black bg-opacity-50 flex flex-col justify-center text-center text-white">
-            <h1 class="text-5xl md:text-7xl font-bold mb-4">Лёха амов сегодня делает всем скидки!</h1>
-            <p class="text-xl md:text-2xl font-medium mb-8">
-                Заходите скорее и узнайте, как получить свою скидку прямо сейчас.
-            </p>
-            <a href="#tariffs" class="bg-yellow-500 text-black font-semibold px-8 py-4 rounded-full shadow-lg hover:bg-yellow-600 transition duration-300">
-                Посмотреть тарифы
-            </a>
+            <h1 class="text-5xl md:text-7xl font-bold mb-4">Фитнес-клуб «Тонус»</h1>
+            <p class="text-xl md:text-2xl font-medium mb-8">Тренируйтесь, достигайте целей, будьте здоровыми. Присоединяйтесь к нам!</p>
+            <a href="#calendar" class="bg-yellow-500 text-black font-semibold px-8 py-4 rounded-full shadow-lg hover:bg-yellow-600 transition duration-300">Записаться</a>
         </div>
     </section>
 
-    <!-- Advantages Section -->
-    <section class="py-16 px-4 text-center">
-        <div class="container mx-auto max-w-6xl">
-            <h2 class="text-4xl font-bold mb-12">Почему выбрать нас?</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
-                <div class="fade-in bg-white shadow-lg rounded-lg p-8">
-                    <i class="text-5xl lucide lucide-dumbbell"></i>
-                    <h3 class="text-2xl font-semibold my-4">Современное оборудование</h3>
-                    <p class="text-gray-600">Новейшие тренажёры, кардиозоны и спортивные площадки для максимального комфорта.</p>
-                </div>
-                <div class="fade-in bg-white shadow-lg rounded-lg p-8">
-                    <i class="text-5xl lucide lucide-heart"></i>
-                    <h3 class="text-2xl font-semibold my-4">Индивидуальный подход</h3>
-                    <p class="text-gray-600">Наши инструкторы помогут вам составить программу тренировок, подходящую именно вам.</p>
-                </div>
-                <div class="fade-in bg-white shadow-lg rounded-lg p-8">
-                    <i class="text-5xl lucide lucide-star"></i>
-                    <h3 class="text-2xl font-semibold my-4">Мотивационная атмосфера</h3>
-                    <p class="text-gray-600">Тренируйтесь в окружении единомышленников и вдохновляйтесь на новые достижения!</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Gallery Section -->
-    <section class="py-16 bg-gray-100 px-4">
+    <!-- Calendar Section -->
+    <section id="calendar" class="py-16 px-4">
         <div class="container mx-auto max-w-6xl text-center">
-            <h2 class="text-4xl font-bold mb-12">Наши залы</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div class="bg-white shadow-lg rounded-lg overflow-hidden">
-                    <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/cee657ef-5daa-4055-b89d-004435a481b3.jpg" alt="Современный зал 1" style="width: 100%; height: 200px; object-fit: cover;">
-                    <div class="p-6">
-                        <h3 class="text-2xl font-semibold mb-2">Просторный современный зал</h3>
-                        <p class="text-gray-600">Максимальные удобства для ваших тренировок.</p>
-                    </div>
-                </div>
-                <div class="bg-white shadow-lg rounded-lg overflow-hidden">
-                    <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/2e3b5b8d-0021-448a-8cd0-edab7ca91e04.jpg" alt="Современный зал 2" style="width: 100%; height: 200px; object-fit: cover;">
-                    <div class="p-6">
-                        <h3 class="text-2xl font-semibold mb-2">Новейшие тренажёры</h3>
-                        <p class="text-gray-600">Оснащение мирового уровня.</p>
-                    </div>
-                </div>
+            <h2 class="text-4xl font-bold mb-6">Запишитесь на удобное время</h2>
+            <p class="text-gray-600 mb-12">Выберите свободное время для ваших тренировок.</p>
+            <div id="calendar-container" class="bg-white shadow-lg p-6 rounded-lg">
+                <div id="calendar" class="calendar mb-6"></div>
+                <div id="slots" class="text-left space-y-4"></div>
+                <form id="booking-form" class="mt-4 hidden">
+                    <input type="text" id="visitor-name" class="w-full mb-4 p-2 border rounded-lg" placeholder="Ваше имя" required />
+                    <button type="submit" class="bg-yellow-500 text-black font-semibold px-8 py-4 rounded-full shadow-lg hover:bg-yellow-600 transition duration-300">Подтвердить запись</button>
+                </form>
+                <div id="confirmation" class="text-left hidden mt-6"></div>
             </div>
         </div>
     </section>
 
-    <!-- Tariffs Section -->
-    <section id="tariffs" class="py-16 bg-gray-100 px-4">
-        <div class="container mx-auto max-w-6xl text-center">
-            <h2 class="text-4xl font-bold mb-12">Выберите подходящий тариф</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
-                <div class="fade-in bg-white shadow-lg rounded-lg p-8">
-                    <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/ffe65c76-58eb-4c4c-b8c8-0a47dbb0818d.jpg" alt="Разовый визит" class="w-full rounded-lg mb-4" style="height: 200px; object-fit: cover;">
-                    <h3 class="text-2xl font-semibold mb-4">Разовый визит</h3>
-                    <p class="text-gray-600">Полный доступ на 1 день. Цена: <span class="text-lg font-bold">500 ₽</span></p>
-                </div>
-                <div class="fade-in bg-white shadow-lg rounded-lg p-8">
-                    <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/7ac6b15a-804e-4dc8-92a1-1cac72f07920.jpg" alt="Абонемент на месяц" class="w-full rounded-lg mb-4" style="height: 200px; object-fit: cover;">
-                    <h3 class="text-2xl font-semibold mb-4">Абонемент на месяц</h3>
-                    <p class="text-gray-600">Неограниченные посещения. Цена: <span class="text-lg font-bold">3500 ₽</span></p>
-                </div>
-                <div class="fade-in bg-white shadow-lg rounded-lg p-8">
-                    <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/ffe65c76-58eb-4c4c-b8c8-0a47dbb0818d.jpg" alt="Абонемент на год" class="w-full rounded-lg mb-4" style="height: 200px; object-fit: cover;">
-                    <h3 class="text-2xl font-semibold mb-4">Абонемент на год</h3>
-                    <p class="text-gray-600">Максимальная экономия. Цена: <span class="text-lg font-bold">35 000 ₽</span></p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Call to Action Section -->
-    <section class="py-16 px-4">
-        <div class="container mx-auto max-w-4xl bg-white shadow-lg rounded-lg p-8 text-center">
-            <h2 class="text-4xl font-bold mb-8">Начните сегодня</h2>
-            <p class="text-gray-600 text-lg mb-8">Запишитесь на бесплатное пробное занятие и откройте для себя новый уровень фитнеса!</p>
-            <a href="#tariffs" class="bg-yellow-500 text-black font-semibold px-8 py-4 rounded-full shadow-lg hover:bg-yellow-600 transition duration-300">
-                Узнать больше
-            </a>
-        </div>
-    </section>
-
-    <!-- Footer -->
     <footer class="py-8 bg-gray-900 text-white text-center">
         <p>© 2023 Фитнес-клуб «Тонус». Все права защищены.</p>
     </footer>
 
     <script>
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
+        const apiURL = '/api';
+
+        const renderCalendar = async () => {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth();
+
+            const calendarElement = document.getElementById('calendar');
+            let html = '<table class="calendar w-full"><thead><tr>';
+            const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+            days.forEach(day => (html += `<th>${day}</th>`));
+            html += '</tr></thead><tbody>';
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            let date = 1;
+            for (let i = 0; i < 6; i++) {
+                html += '<tr>';
+                for (let j = 0; j < 7; j++) {
+                    if (i === 0 && j < (firstDay === 0 ? 6 : firstDay - 1)) {
+                        html += `<td></td>`;
+                    } else if (date <= daysInMonth) {
+                        html += `<td data-date="${year}-${month + 1}-${date}">${date}</td>`;
+                        date++;
+                    } else {
+                        html += `<td></td>`;
+                    }
                 }
+                html += '</tr>';
+            }
+            html += '</tbody></table>';
+            calendarElement.innerHTML = html;
+
+            document.querySelectorAll('.calendar td[data-date]').forEach(cell => {
+                cell.addEventListener('click', async (e) => {
+                    const selectedDate = e.target.dataset.date;
+                    await renderSlots(selectedDate);
+                });
             });
+        };
+
+        const renderSlots = async (date) => {
+            const slotsContainer = document.getElementById('slots');
+            const form = document.getElementById('booking-form');
+            const confirmation = document.getElementById('confirmation');
+            slotsContainer.innerHTML = '';
+            form.classList.add('hidden');
+            confirmation.classList.add('hidden');
+
+            const response = await fetch(`${apiURL}/appointments?date=${date}`);
+            const slots = await response.json();
+
+            if (slots.length === 0) {
+                slotsContainer.innerHTML = '<p>На выбранную дату нет свободных мест.</p>';
+            } else {
+                slotsContainer.innerHTML = `<h3 class="text-2xl font-semibold mb-4">Доступные временные слоты на ${date}:</h3>`;
+                slots.forEach(slot => {
+                    const slotEl = document.createElement('div');
+                    slotEl.className = 'slot bg-gray-100 text-black';
+                    slotEl.textContent = slot.time_slot;
+                    slotEl.addEventListener('click', () => { 
+                        form.classList.remove('hidden');
+                        document.getElementById('visitor-name').focus(); 
+                        form.dataset.selectedDate = date;
+                        form.dataset.selectedSlot = slot.time_slot;
+                    });
+                    slotsContainer.appendChild(slotEl);
+                });
+            }
+        };
+
+        document.getElementById('booking-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const form = e.target;
+            const visitorName = document.getElementById('visitor-name').value;
+            const data = {
+                date: form.dataset.selectedDate,
+                time_slot: form.dataset.selectedSlot,
+                visitor_name: visitorName
+            };
+
+            const response = await fetch(`${apiURL}/appointments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (response.status === 200) {
+                const confirmation = document.getElementById('confirmation');
+                confirmation.textContent = `Запись подтверждена на ${data.date}, ${data.time_slot}. Имя: ${data.visitor_name}.`;
+                confirmation.classList.remove('hidden');
+                form.classList.add('hidden');
+            }
         });
 
-        document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+        renderCalendar();
     </script>
 </body>
 </html>
