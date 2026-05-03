@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Кофейня</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -20,7 +19,9 @@
             <div>
                 <a href="#about" class="text-gray-700 hover:text-brown-600 mx-4">О нас</a>
                 <a href="#services" class="text-gray-700 hover:text-brown-600 mx-4">Меню</a>
-                <a href="#contact" class="bg-brown-600 text-white px-4 py-2 rounded hover:bg-brown-500 transition">Связаться</a>
+                <button id="cart-button" class="bg-brown-600 text-white px-4 py-2 rounded hover:bg-brown-500 transition">
+                    Корзина (0)
+                </button>
             </div>
         </div>
     </nav>
@@ -37,7 +38,7 @@
     <section class="py-12" id="about">
         <div class="container mx-auto text-center">
             <h3 class="text-4xl font-bold mb-6">О нас</h3>
-            <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/3a9a010f-e4ed-48bf-9c87-b140d12e0b18.jpg" style="width:100%;height:100%;object-fit:cover;display:block" class="rounded-lg mb-6">
+            <img src="https://cdn.poehali.dev/projects/4fe9d363-5216-44d6-8799-40a6f4aeed69/bucket/lumen-images/3a9a010f-e4ed-48bf-9c87-b140d12e0b18.jpg" class="rounded-lg mb-6">
             <p class="text-lg mb-4">Наша кофейня предлагает лучшие сорта кофе и атмосферу, где каждый сможет насладиться моментом.</p>
         </div>
     </section>
@@ -48,46 +49,39 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="border rounded-lg p-6 shadow-lg hover:shadow-xl transition">
                     <div class="flex justify-center mb-4">
-                        <span class="text-6xl">☕</span>
+                        <img src="https://example.com/espresso.jpg" class="h-[200px] object-cover" alt="Эспрессо">
                     </div>
                     <h4 class="text-xl font-bold mb-2">Эспрессо</h4>
-                    <p>Классический итальянский кофе, который пробуждает истинный аромат.</p>
+                    <p class="text-gray-600 mb-2">Классический итальянский кофе, который пробуждает истинный аромат.</p>
+                    <p class="text-lg font-bold mb-2">Цена: 150₽</p>
+                    <div class="flex items-center justify-center">
+                        <input type="number" min="1" value="1" class="w-20 border rounded mx-2 text-center" id="espresso-quantity">
+                        <button class="bg-brown-600 text-white px-4 py-2 rounded add-to-cart" data-name="Эспрессо" data-price="150" data-quantity-input="espresso-quantity">Добавить в корзину</button>
+                    </div>
                 </div>
                 <div class="border rounded-lg p-6 shadow-lg hover:shadow-xl transition">
                     <div class="flex justify-center mb-4">
-                        <span class="text-6xl">🥐</span>
+                        <img src="https://example.com/croissant.jpg" class="h-[200px] object-cover" alt="Круассан">
                     </div>
                     <h4 class="text-xl font-bold mb-2">Круассан</h4>
-                    <p>Свежие, рассыпчатые круассаны, идеально дополняющие ваш кофе.</p>
+                    <p class="text-gray-600 mb-2">Свежие, рассыпчатые круассаны, идеально дополняющие ваш кофе.</p>
+                    <p class="text-lg font-bold mb-2">Цена: 100₽</p>
+                    <div class="flex items-center justify-center">
+                        <input type="number" min="1" value="1" class="w-20 border rounded mx-2 text-center" id="croissant-quantity">
+                        <button class="bg-brown-600 text-white px-4 py-2 rounded add-to-cart" data-name="Круассан" data-price="100" data-quantity-input="croissant-quantity">Добавить в корзину</button>
+                    </div>
                 </div>
                 <div class="border rounded-lg p-6 shadow-lg hover:shadow-xl transition">
                     <div class="flex justify-center mb-4">
-                        <span class="text-6xl">🍰</span>
+                        <img src="https://example.com/cake.jpg" class="h-[200px] object-cover" alt="Торт">
                     </div>
                     <h4 class="text-xl font-bold mb-2">Торт</h4>
-                    <p>Нежные десерты, приготовленные с любовью и вниманием к деталям.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="py-12">
-        <div class="container mx-auto text-center">
-            <h3 class="text-4xl font-bold mb-6">Отзывы клиентов</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="border rounded-lg p-6 bg-white shadow-lg">
-                    <div class="flex items-center mb-4">
-                        <div class="w-10 h-10 bg-brown-600 text-white rounded-full flex items-center justify-center mr-2">АИ</div>
-                        <h5 class="text-lg font-bold">Анастасия И.</h5>
+                    <p class="text-gray-600 mb-2">Нежные десерты, приготовленные с любовью и вниманием к деталям.</p>
+                    <p class="text-lg font-bold mb-2">Цена: 250₽</p>
+                    <div class="flex items-center justify-center">
+                        <input type="number" min="1" value="1" class="w-20 border rounded mx-2 text-center" id="cake-quantity">
+                        <button class="bg-brown-600 text-white px-4 py-2 rounded add-to-cart" data-name="Торт" data-price="250" data-quantity-input="cake-quantity">Добавить в корзину</button>
                     </div>
-                    <p class="text-gray-600">"Лучшее место для утренних встреч с друзьями! Кофе просто отличный!"</p>
-                </div>
-                <div class="border rounded-lg p-6 bg-white shadow-lg">
-                    <div class="flex items-center mb-4">
-                        <div class="w-10 h-10 bg-brown-600 text-white rounded-full flex items-center justify-center mr-2">МП</div>
-                        <h5 class="text-lg font-bold">Максим П.</h5>
-                    </div>
-                    <p class="text-gray-600">"Уютная атмосфера и замечательный сервис! Обязательно вернусь!"</p>
                 </div>
             </div>
         </div>
@@ -118,20 +112,24 @@
     </footer>
 
     <script>
-        // Код для анимации появления секций при прокрутке
-        const observer = new IntersectionObserver(entries => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.remove('opacity-0');
-                    entry.target.classList.add('opacity-100');
-                }
-            });
-        });
+        let totalQuantity = 0;
 
-        document.querySelectorAll('section').forEach(section => {
-            section.classList.add('opacity-0');
-            observer.observe(section);
+        // Обработчик для добавления товара в корзину
+        document.querySelectorAll('.add-to-cart').forEach(button => {
+            button.addEventListener('click', () => {
+                const quantityInput = document.getElementById(button.dataset.quantityInput);
+                const quantity = parseInt(quantityInput.value);
+                totalQuantity += quantity;
+
+                // Обновить кнопку корзины
+                document.getElementById('cart-button').innerText = `Корзина (${totalQuantity})`;
+                alert(`Добавлено ${quantity} ${button.dataset.name}(ов) в корзину!`);
+                
+                // Сбросить количество после добавления
+                quantityInput.value = 1;
+            });
         });
     </script>
 </body>
 </html>
+```
