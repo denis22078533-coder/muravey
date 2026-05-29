@@ -1,1 +1,0 @@
-export const ProverkaRaboti = "МУРАВЕЙ_УМЕЕТ_ПРАВИТЬ_СЕБЯ";
