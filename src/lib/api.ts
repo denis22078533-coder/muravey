@@ -3,7 +3,7 @@ const API_BASE = '/api';
 export interface ScanResult {
   place?: string;
   date?: string;
-  items?: Array<{ name: string; quantity: number; price: number; sum: number }>;
+  items?: Array<{ name: string; quantity: number; price: number; sum: number; category?: string }>;
   total?: number;
   raw_text?: string;
   error?: string;
@@ -27,7 +27,7 @@ export const setProxyApiKey = (key: string) => {
   try {
     localStorage.setItem('proxyapi_key', key);
   } catch {
-    // silent fail
+    /* silent */
   }
 };
 
@@ -43,7 +43,22 @@ export const setDeepSeekKey = (key: string) => {
   try {
     localStorage.setItem('deepseek_api_key', key);
   } catch {
-    // silent fail
+    /* silent */
+  }
+};
+
+// S3
+const getS3Headers = (): Record<string, string> => {
+  try {
+    const s3 = JSON.parse(localStorage.getItem('babki_s3') || '{}');
+    return {
+      'X-S3-Endpoint': s3.endpoint || '',
+      'X-S3-Access-Key': s3.accessKey || '',
+      'X-S3-Secret-Key': s3.secretKey || '',
+      'X-S3-Bucket': s3.bucket || '',
+    };
+  } catch {
+    return {};
   }
 };
 
@@ -51,12 +66,15 @@ export async function scanReceiptImage(base64: string): Promise<ScanResult> {
   const key = getProxyApiKey();
   if (!key) return { error: 'Ключ ProxyAPI не задан. Перейдите в раздел 🧠 Мозг.' };
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-ProxyAPI-Key': key,
+    ...getS3Headers(),
+  };
+
   const r = await fetch(`${API_BASE}/scan`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-ProxyAPI-Key': key,
-    },
+    headers,
     body: JSON.stringify({ image: base64 }),
   });
   if (!r.ok) {

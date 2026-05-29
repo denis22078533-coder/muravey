@@ -1,26 +1,41 @@
 import { Routes, Route, NavLink } from 'react-router-dom';
 import Home from './pages/Home';
 import Brain from './pages/Brain';
+import Tax from './pages/Tax';
 
 export default function App() {
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="bg-slate-800 border-b border-slate-700 px-4 py-3 flex items-center gap-6">
-        <h1 className="text-lg font-bold text-cyan-400">🧾 Бабки Скан</h1>
-        <nav className="flex gap-4 text-sm">
+    <div className="min-h-screen flex flex-col bg-zinc-950 text-zinc-100">
+      <header className="bg-zinc-900 border-b border-zinc-800 px-4 py-3 flex items-center gap-2 flex-wrap">
+        <h1 className="text-lg font-bold text-amber-400 mr-4">🧾 Бабки Скан</h1>
+        <nav className="flex gap-2 text-sm">
           <NavLink
             to="/"
             end
             className={({ isActive }) =>
-              isActive ? 'text-cyan-300 underline' : 'text-slate-300 hover:text-white'
+              `px-3 py-1 rounded-lg transition ${
+                isActive ? 'bg-amber-500/20 text-amber-400' : 'text-zinc-400 hover:text-zinc-200'
+              }`
             }
           >
-            📸 Чеки
+            📊 Дашборд
+          </NavLink>
+          <NavLink
+            to="/tax"
+            className={({ isActive }) =>
+              `px-3 py-1 rounded-lg transition ${
+                isActive ? 'bg-amber-500/20 text-amber-400' : 'text-zinc-400 hover:text-zinc-200'
+              }`
+            }
+          >
+            📑 Налоги
           </NavLink>
           <NavLink
             to="/brain"
             className={({ isActive }) =>
-              isActive ? 'text-cyan-300 underline' : 'text-slate-300 hover:text-white'
+              `px-3 py-1 rounded-lg transition ${
+                isActive ? 'bg-amber-500/20 text-amber-400' : 'text-zinc-400 hover:text-zinc-200'
+              }`
             }
           >
             🧠 Мозг
@@ -32,6 +47,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/brain" element={<Brain />} />
+          <Route path="/tax" element={<Tax />} />
         </Routes>
       </main>
     </div>

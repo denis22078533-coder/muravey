@@ -1,5 +1,7 @@
-"""FastAPI backend for Babki Scan — Vercel serverless (stateless)."""
+"""FastAPI backend for Babki Scan — Vercel serverless (stateless) with S3 support."""
 import json
+import io
+import uuid
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,17 +21,54 @@ app.add_middleware(
 
 
 def get_header(request: Request, name: str, fallback: str = "") -> str:
-    """Извлекает значение из заголовка (регистронезависимо)."""
     for key, value in request.headers.items():
         if key.lower() == name.lower():
             return value
     return fallback
 
 
+def upload_to_s3(
+    endpoint: str,
+    access_key: str,
+    secret_key: str,
+    bucket: str,
+    image_bytes: bytes,
+) -> str | None:
+    """Загружает изображение в S3 и возвращает публичный URL. При ошибке — None."""
+    try:
+        import boto3
+        from botocore.client import Config
+
+        # Формируем endpoint без протокола если нужно
+        if endpoint.startswith("https://"):
+            endpoint_host = endpoint[8:]
+        elif endpoint.startswith("http://"):
+            endpoint_host = endpoint[7:]
+        else:
+            endpoint_host = endpoint
+
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=endpoint if endpoint.startswith("http") else f"https://{endpoint}",
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            config=Config(signature_version="s3v4"),
+            region_name="ru-central1",
+        )
+
+        key = f"receipts/{uuid.uuid4().hex}.jpg"
+        s3.upload_fileobj(io.BytesIO(image_bytes), bucket, key, ExtraArgs={"ContentType": "image/jpeg"})
+
+        # Формируем публичный URL
+        return f"https://{bucket}.{endpoint_host}/{key}"
+    except Exception:
+        return None
+
+
 # --- Models ---
 
 class ScanRequest(BaseModel):
-    image: str  # base64-encoded image data (без data:image/... префикса)
+    image: str  # base64-encoded image data
 
 
 class ChatMessage(BaseModel):
@@ -46,9 +85,9 @@ class ChatRequest(BaseModel):
 @app.post("/api/scan")
 async def scan_receipt(req: ScanRequest, request: Request):
     """
-    Распознаёт чек через ProxyAPI (модель openai/gpt-4o-mini).
-    Ключ ProxyAPI передаётся в заголовке X-ProxyAPI-Key.
-    НИКОГДА не возвращает 500 — всегда структурированный JSON.
+    Распознаёт чек через ProxyAPI.
+    Если переданы S3-заголовки — загружает в S3 и передаёт URL вместо base64.
+    Категоризирует каждый товар.
     """
     proxyapi_key = get_header(request, "X-ProxyAPI-Key")
     if not proxyapi_key:
@@ -57,6 +96,29 @@ async def scan_receipt(req: ScanRequest, request: Request):
     image_data = req.image
     if not image_data:
         return {"error": "No image data provided"}
+
+    # Декодируем изображение
+    try:
+        import base64
+        image_bytes = base64.b64decode(image_data)
+    except Exception:
+        return {"error": "Invalid base64 image"}
+
+    # Пытаемся загрузить в S3
+    s3_endpoint = get_header(request, "X-S3-Endpoint")
+    s3_access = get_header(request, "X-S3-Access-Key")
+    s3_secret = get_header(request, "X-S3-Secret-Key")
+    s3_bucket = get_header(request, "X-S3-Bucket")
+
+    image_url: str | None = None
+    if s3_endpoint and s3_access and s3_secret and s3_bucket:
+        s3_url = upload_to_s3(s3_endpoint, s3_access, s3_secret, s3_bucket, image_bytes)
+        if s3_url:
+            image_url = s3_url
+
+    # Если S3 не сработал — используем base64
+    if image_url is None:
+        image_url = f"data:image/jpeg;base64,{image_data}"
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -79,8 +141,9 @@ async def scan_receipt(req: ScanRequest, request: Request):
                                         "Верни ТОЛЬКО JSON (без markdown-разметки) с полями:\n"
                                         "- place (string): название магазина\n"
                                         "- date (string): дата в формате ДД.ММ.ГГГГ\n"
-                                        "- items (array): список позиций, каждая с полями name (string), "
-                                        "quantity (number), price (number за единицу), sum (number)\n"
+                                        "- items (array): список позиций, каждая с полями:\n"
+                                        "  name (string), quantity (number), price (number за единицу), "
+                                        "sum (number), category (string: одна из: Продукты, Рестораны, Авто, ЖКХ, Услуги, Прочее)\n"
                                         "- total (number): итоговая сумма\n"
                                         "- raw_text (string): сырой текст чека\n"
                                         "Если что-то не ясно — угадай best-effort. "
@@ -90,7 +153,7 @@ async def scan_receipt(req: ScanRequest, request: Request):
                                 {
                                     "type": "image_url",
                                     "image_url": {
-                                        "url": f"data:image/jpeg;base64,{image_data}",
+                                        "url": image_url,
                                         "detail": "high",
                                     },
                                 },
@@ -128,10 +191,7 @@ async def scan_receipt(req: ScanRequest, request: Request):
 
 @app.post("/api/chat")
 async def chat(req: ChatRequest, request: Request):
-    """
-    Чат с DeepSeek V3.
-    Ключ DeepSeek передаётся в заголовке X-DeepSeek-Key.
-    """
+    """Чат с DeepSeek V3."""
     deepseek_key = get_header(request, "X-DeepSeek-Key")
     if not deepseek_key:
         return {"error": "X-DeepSeek-Key header is missing or empty"}
