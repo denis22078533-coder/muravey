@@ -61,7 +61,7 @@ async def scan_receipt(req: ScanRequest, request: Request):
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(
-                "https://proxyapi.ru/api/v1/chat/completions",
+                "https://proxyapi.ru/chat/completions",
                 headers={
                     "Authorization": f"Bearer {proxyapi_key}",
                     "Content-Type": "application/json",
@@ -99,6 +99,7 @@ async def scan_receipt(req: ScanRequest, request: Request):
                     ],
                     "max_tokens": 2000,
                     "temperature": 0.1,
+                    "response_format": {"type": "json_object"},
                 },
             )
 
