@@ -133,6 +133,7 @@ async def scan_receipt(req: ScanRequest, request: Request):
     proxyapi_key = get_header(request, "X-ProxyAPI-Key")
     if not proxyapi_key:
         return {"error": "X-ProxyAPI-Key header is missing or empty"}
+    selected_model = get_header(request, "X-Selected-Model", "openai/gpt-4o-mini")
     image_data = req.image
     if not image_data:
         return {"error": "No image data provided"}
@@ -158,7 +159,7 @@ async def scan_receipt(req: ScanRequest, request: Request):
                 "https://proxyapi.ru/chat/completions",
                 headers={"Authorization": f"Bearer {proxyapi_key}", "Content-Type": "application/json"},
                 json={
-                    "model": "openai/gpt-4o-mini",
+                    "model": selected_model,
                     "messages": [{
                         "role": "user",
                         "content": [

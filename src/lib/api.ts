@@ -136,14 +136,23 @@ export async function createReport(entry: Omit<ReportEntry, 'id'> & { id?: strin
 }
 
 // --- Scan ---
+function getSelectedModel(): string {
+  try { return localStorage.getItem('X-Selected-Model') || 'openai/gpt-4o-mini'; } catch { return 'openai/gpt-4o-mini'; }
+}
+
 export async function scanReceiptImage(base64: string): Promise<ScanResult> {
   const settings = await fetchSettings();
   const key = settings.proxyapi_key;
   if (!key) return { error: 'Ключ ProxyAPI не задан. Перейдите в раздел 🧠 Мозг.' };
 
+  const model = getSelectedModel();
   const r = await fetch(`${API_BASE}/scan`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-ProxyAPI-Key': key },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-ProxyAPI-Key': key,
+      'X-Selected-Model': model,
+    },
     body: JSON.stringify({ image: base64 }),
   });
   if (!r.ok) {
