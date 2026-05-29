@@ -14,22 +14,38 @@ export interface ChatMessage {
   content: string;
 }
 
-// Ключи хранятся в localStorage
-export function getProxyApiKey(): string {
-  return localStorage.getItem('proxyapi_key') || '';
-}
+// Ключи хранятся в localStorage (с безопасной обёрткой)
+export const getProxyApiKey = (): string => {
+  try {
+    return localStorage.getItem('proxyapi_key') || '';
+  } catch {
+    return '';
+  }
+};
 
-export function setProxyApiKey(key: string) {
-  localStorage.setItem('proxyapi_key', key);
-}
+export const setProxyApiKey = (key: string) => {
+  try {
+    localStorage.setItem('proxyapi_key', key);
+  } catch {
+    // silent fail
+  }
+};
 
-export function getDeepSeekKey(): string {
-  return localStorage.getItem('deepseek_api_key') || '';
-}
+export const getDeepSeekKey = (): string => {
+  try {
+    return localStorage.getItem('deepseek_api_key') || '';
+  } catch {
+    return '';
+  }
+};
 
-export function setDeepSeekKey(key: string) {
-  localStorage.setItem('deepseek_api_key', key);
-}
+export const setDeepSeekKey = (key: string) => {
+  try {
+    localStorage.setItem('deepseek_api_key', key);
+  } catch {
+    // silent fail
+  }
+};
 
 export async function scanReceiptImage(base64: string): Promise<ScanResult> {
   const key = getProxyApiKey();
