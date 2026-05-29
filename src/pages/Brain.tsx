@@ -34,12 +34,12 @@ function setSelectedModel(v: string) {
   try { localStorage.setItem('X-Selected-Model', v); } catch { /* */ }
 }
 
-function getDBConfig() {
-  try { return JSON.parse(localStorage.getItem('db_config') || '{"host":"","port":"5432","user":"","password":"","dbname":""}'); }
-  catch { return { host: '', port: '5432', user: '', password: '', dbname: '' }; }
+function getServerConfig() {
+  try { return JSON.parse(localStorage.getItem('server_config') || '{"host":"","user":"root","password":"","dbpath":"/root/my-project-storage/babki.db"}'); }
+  catch { return { host: '', user: 'root', password: '', dbpath: '/root/my-project-storage/babki.db' }; }
 }
-function setDBConfig(cfg: Record<string,string>) {
-  try { localStorage.setItem('db_config', JSON.stringify(cfg)); } catch { /* */ }
+function setServerConfig(cfg: Record<string,string>) {
+  try { localStorage.setItem('server_config', JSON.stringify(cfg)); } catch { /* */ }
 }
 
 export default function Brain() {
@@ -56,13 +56,13 @@ export default function Brain() {
   const [showProxy, setShowProxy] = useState(false);
   const [showS3Secret, setShowS3Secret] = useState(false);
   const [showSBP, setShowSBP] = useState(false);
-  const [showDBPass, setShowDBPass] = useState(false);
+  const [showServerPass, setShowServerPass] = useState(false);
 
   // Модель сканирования
   const [scanModel, setScanModel] = useState(getSelectedModel);
 
-  // БД
-  const [db, setDb] = useState(getDBConfig);
+  // Сервер VPS
+  const [server, setServer] = useState(getServerConfig);
 
   // Инструкция
   const [showDBHelp, setShowDBHelp] = useState(false);
@@ -79,7 +79,7 @@ export default function Brain() {
   const handleSaveAll = async () => {
     await saveSettings(cfg);
     setSelectedModel(scanModel);
-    setDBConfig(db);
+    setServerConfig(server);
     flash('✅ Все настройки сохранены', true);
   };
 
@@ -90,7 +90,7 @@ export default function Brain() {
   };
 
   const update = (k: keyof AISettings, v: string) => setCfg((prev) => ({ ...prev, [k]: v }));
-  const updateDB = (k: string, v: string) => setDb((prev: Record<string,string>) => ({ ...prev, [k]: v }));
+  const updateServer = (k: string, v: string) => setServer((prev: Record<string,string>) => ({ ...prev, [k]: v }));
 
   if (loading) return <p className="text-zinc-400 text-center mt-10 animate-pulse">Загрузка...</p>;
 
@@ -180,40 +180,34 @@ export default function Brain() {
         </div>
       </fieldset>
 
-      {/* ===== ПОДКЛЮЧЕНИЕ К БАЗЕ ДАННЫХ ===== */}
+      {/* ===== ПОДКЛЮЧЕНИЕ К СЕРВЕРУ (SFTP) ===== */}
       <fieldset className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
-        <legend className="text-indigo-400 font-semibold text-sm">🗄️ Подключение к базе данных (Reg.ru)</legend>
+        <legend className="text-indigo-400 font-semibold text-sm">🖥️ Подключение к серверу (SFTP/VPS)</legend>
 
         <div className="grid md:grid-cols-2 gap-3">
           <div>
-            <label className="text-xs text-zinc-500 block mb-1">Хост (Host)</label>
-            <input type="text" placeholder="123.45.67.89 или db.example.com" value={db.host}
-              onChange={(e) => updateDB('host', e.target.value)}
+            <label className="text-xs text-zinc-500 block mb-1">IP-адрес сервера (Host)</label>
+            <input type="text" placeholder="123.45.67.89" value={server.host}
+              onChange={(e) => updateServer('host', e.target.value)}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500" />
           </div>
           <div>
-            <label className="text-xs text-zinc-500 block mb-1">Порт (Port)</label>
-            <input type="text" placeholder="5432" value={db.port}
-              onChange={(e) => updateDB('port', e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500" />
-          </div>
-          <div>
-            <label className="text-xs text-zinc-500 block mb-1">Имя пользователя (User)</label>
-            <input type="text" placeholder="admin" value={db.user}
-              onChange={(e) => updateDB('user', e.target.value)}
+            <label className="text-xs text-zinc-500 block mb-1">Пользователь</label>
+            <input type="text" placeholder="root" value={server.user}
+              onChange={(e) => updateServer('user', e.target.value)}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500" />
           </div>
           <div className="relative">
-            <label className="text-xs text-zinc-500 block mb-1">Пароль (Password)</label>
-            <input type={showDBPass ? 'text' : 'password'} placeholder="••••••••" value={db.password}
-              onChange={(e) => updateDB('password', e.target.value)}
+            <label className="text-xs text-zinc-500 block mb-1">Пароль от сервера</label>
+            <input type={showServerPass ? 'text' : 'password'} placeholder="••••••••" value={server.password}
+              onChange={(e) => updateServer('password', e.target.value)}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 pr-9 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500" />
-            <EyeBtn show={showDBPass} toggle={() => setShowDBPass(!showDBPass)} />
+            <EyeBtn show={showServerPass} toggle={() => setShowServerPass(!showServerPass)} />
           </div>
-          <div className="md:col-span-2">
-            <label className="text-xs text-zinc-500 block mb-1">Имя базы данных (Database Name)</label>
-            <input type="text" placeholder="babki_scan" value={db.dbname}
-              onChange={(e) => updateDB('dbname', e.target.value)}
+          <div>
+            <label className="text-xs text-zinc-500 block mb-1">Путь к диску/файлу БД</label>
+            <input type="text" placeholder="/root/my-project-storage/babki.db" value={server.dbpath}
+              onChange={(e) => updateServer('dbpath', e.target.value)}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500" />
           </div>
         </div>
@@ -222,26 +216,22 @@ export default function Brain() {
         <div>
           <button onClick={() => setShowDBHelp(!showDBHelp)}
             className="text-xs text-indigo-400 hover:text-indigo-300 transition">
-            {showDBHelp ? '🔼 Скрыть инструкцию' : '📖 Как подключить базу Reg.ru?'}
+            {showDBHelp ? '🔼 Скрыть инструкцию' : '📖 Как подключить сервер? (Purple Cadmium / FileZilla)'}
           </button>
           {showDBHelp && (
             <div className="mt-2 bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-xs text-zinc-400 space-y-2">
-              <p className="font-semibold text-zinc-300">Инструкция по подключению PostgreSQL/MySQL от Reg.ru:</p>
+              <p className="font-semibold text-zinc-300">Автоматическое подключение через SFTP (без ручной настройки):</p>
               <ol className="list-decimal list-inside space-y-1">
-                <li>Войдите в <span className="text-amber-400">личный кабинет Reg.ru</span> → раздел <span className="text-amber-400">«Хостинг»</span></li>
-                <li>Перейдите в <span className="text-amber-400">«Базы данных»</span> и создайте новую БД (MySQL или PostgreSQL)</li>
-                <li>Скопируйте из панели:
-                  <ul className="list-disc list-inside ml-4 mt-1">
-                    <li><b>Хост</b>: обычно <code className="text-green-400">localhost</code> или IP-адрес сервера</li>
-                    <li><b>Порт</b>: 3306 для MySQL / 5432 для PostgreSQL</li>
-                    <li><b>Имя пользователя</b> и <b>Пароль</b>: логин, который вы указали при создании БД</li>
-                    <li><b>Имя базы данных</b>: точное название созданной базы</li>
-                  </ul>
-                </li>
-                <li>Убедитесь, что в настройках Reg.ru разрешены <span className="text-amber-400">внешние подключения</span> (Remote MySQL/PostgreSQL)</li>
-                <li>Вставьте скопированные данные в поля выше и нажмите «Сохранить»</li>
+                <li><b>IP-адрес</b>: скопируйте из панели VPS (Purple Cadmium → Серверы → IP)</li>
+                <li><b>Пользователь</b>: обычно <code className="text-green-400">root</code></li>
+                <li><b>Пароль</b>: пароль от VPS (приходит на почту при создании сервера)</li>
+                <li><b>Путь к диску</b>: укажите полный путь к папке проекта, например <code className="text-green-400">/root/my-project-storage/babki.db</code></li>
+                <li>Убедитесь, что на VPS включён <span className="text-amber-400">SSH-доступ по паролю</span> (обычно включён по умолчанию)</li>
               </ol>
-              <p className="text-zinc-500 italic mt-2">После сохранения данные передаются в заголовках X-DB-* при запросах к API.</p>
+              <p className="text-zinc-500 italic mt-2">
+                FastAPI через <code className="text-purple-400">paramiko</code> автоматически подключится к серверу,
+                создаст базу данных (SQLite) и сохранит все чеки. Никаких команд в терминал вводить не нужно.
+              </p>
             </div>
           )}
         </div>
