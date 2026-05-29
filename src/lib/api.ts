@@ -14,67 +14,136 @@ export interface ChatMessage {
   content: string;
 }
 
-// Ключи хранятся в localStorage (с безопасной обёрткой)
-export const getProxyApiKey = (): string => {
-  try {
-    return localStorage.getItem('proxyapi_key') || '';
-  } catch {
-    return '';
-  }
+export interface Operation {
+  id: string;
+  date: string;
+  place: string;
+  total: number;
+  type: 'expense' | 'income';
+  items: Array<{ name: string; quantity: number; price: number; sum: number; category?: string }>;
+  raw_text?: string;
+}
+
+export interface AISettings {
+  proxyapi_key: string;
+  deepseek_key: string;
+  s3_endpoint: string;
+  s3_access_key: string;
+  s3_secret_key: string;
+  s3_bucket: string;
+  tariff: string;
+  sbp_tbank_key: string;
+  sbp_merchant_id: string;
+}
+
+export interface ReportEntry {
+  id: string;
+  date: string;
+  period: string;
+  status: string;
+}
+
+// --- localStorage fallback (пока нет БД) ---
+const storage = {
+  get(k: string): string | null {
+    try { return localStorage.getItem(k); } catch { return null; }
+  },
+  set(k: string, v: string) {
+    try { localStorage.setItem(k, v); } catch { /* silent */ }
+  },
+  getJSON<T>(k: string, fallback: T): T {
+    try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
+  },
+  setJSON(k: string, v: unknown) {
+    try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* silent */ }
+  },
 };
 
-export const setProxyApiKey = (key: string) => {
+// --- Operations ---
+export async function fetchOperations(): Promise<Operation[]> {
   try {
-    localStorage.setItem('proxyapi_key', key);
-  } catch {
-    /* silent */
-  }
-};
+    const r = await fetch(`${API_BASE}/operations`);
+    if (r.ok) return await r.json();
+  } catch { /* fallback */ }
+  return storage.getJSON<Operation[]>('ops', []);
+}
 
-export const getDeepSeekKey = (): string => {
+export async function createOperation(op: Omit<Operation, 'id'> & { id?: string }): Promise<boolean> {
   try {
-    return localStorage.getItem('deepseek_api_key') || '';
-  } catch {
-    return '';
-  }
-};
+    const r = await fetch(`${API_BASE}/operations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(op),
+    });
+    if (r.ok) return true;
+  } catch { /* fallback */ }
+  // Локальный fallback
+  const ops = storage.getJSON<Operation[]>('ops', []);
+  ops.unshift({ ...op, id: op.id || Date.now().toString(36) } as Operation);
+  storage.setJSON('ops', ops);
+  return true;
+}
 
-export const setDeepSeekKey = (key: string) => {
+// --- Settings ---
+export async function fetchSettings(): Promise<AISettings> {
   try {
-    localStorage.setItem('deepseek_api_key', key);
-  } catch {
-    /* silent */
-  }
-};
+    const r = await fetch(`${API_BASE}/settings`);
+    if (r.ok) return await r.json();
+  } catch { /* fallback */ }
+  return storage.getJSON<AISettings>('ai_cfg', {
+    proxyapi_key: '', deepseek_key: '',
+    s3_endpoint: '', s3_access_key: '', s3_secret_key: '', s3_bucket: '',
+    tariff: 'free', sbp_tbank_key: '', sbp_merchant_id: '',
+  });
+}
 
-// S3
-const getS3Headers = (): Record<string, string> => {
+export async function saveSettings(cfg: Partial<AISettings>): Promise<boolean> {
   try {
-    const s3 = JSON.parse(localStorage.getItem('babki_s3') || '{}');
-    return {
-      'X-S3-Endpoint': s3.endpoint || '',
-      'X-S3-Access-Key': s3.accessKey || '',
-      'X-S3-Secret-Key': s3.secretKey || '',
-      'X-S3-Bucket': s3.bucket || '',
-    };
-  } catch {
-    return {};
-  }
-};
+    const r = await fetch(`${API_BASE}/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg),
+    });
+    if (r.ok) return true;
+  } catch { /* fallback */ }
+  const current = await fetchSettings();
+  storage.setJSON('ai_cfg', { ...current, ...cfg });
+  return true;
+}
 
+// --- Reports ---
+export async function fetchReports(): Promise<ReportEntry[]> {
+  try {
+    const r = await fetch(`${API_BASE}/reports`);
+    if (r.ok) return await r.json();
+  } catch { /* fallback */ }
+  return storage.getJSON<ReportEntry[]>('reports', []);
+}
+
+export async function createReport(entry: Omit<ReportEntry, 'id'> & { id?: string }): Promise<boolean> {
+  try {
+    const r = await fetch(`${API_BASE}/reports`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry),
+    });
+    if (r.ok) return true;
+  } catch { /* fallback */ }
+  const reports = storage.getJSON<ReportEntry[]>('reports', []);
+  reports.unshift({ ...entry, id: entry.id || Date.now().toString(36) } as ReportEntry);
+  storage.setJSON('reports', reports);
+  return true;
+}
+
+// --- Scan ---
 export async function scanReceiptImage(base64: string): Promise<ScanResult> {
-  const key = getProxyApiKey();
+  const settings = await fetchSettings();
+  const key = settings.proxyapi_key;
   if (!key) return { error: 'Ключ ProxyAPI не задан. Перейдите в раздел 🧠 Мозг.' };
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'X-ProxyAPI-Key': key,
-    ...getS3Headers(),
-  };
 
   const r = await fetch(`${API_BASE}/scan`, {
     method: 'POST',
-    headers,
+    headers: { 'Content-Type': 'application/json', 'X-ProxyAPI-Key': key },
     body: JSON.stringify({ image: base64 }),
   });
   if (!r.ok) {
@@ -84,16 +153,15 @@ export async function scanReceiptImage(base64: string): Promise<ScanResult> {
   return await r.json();
 }
 
+// --- Chat ---
 export async function chatWithAI(messages: ChatMessage[]): Promise<string> {
-  const key = getDeepSeekKey();
+  const settings = await fetchSettings();
+  const key = settings.deepseek_key;
   if (!key) throw new Error('Ключ DeepSeek не задан. Зайдите в 🧠 Мозг.');
 
   const r = await fetch(`${API_BASE}/chat`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-DeepSeek-Key': key,
-    },
+    headers: { 'Content-Type': 'application/json', 'X-DeepSeek-Key': key },
     body: JSON.stringify({ messages }),
   });
   if (!r.ok) {
