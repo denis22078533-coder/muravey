@@ -520,6 +520,155 @@ async def confirm_payment_endpoint(request: Request):
     return {"error": "Payment not found"}
 
 
+# ---------- Health & Connection Checks ----------
+
+@app.get("/api/health")
+async def health(request: Request):
+    """Общий статус системы."""
+    uid = await get_user_id(request)
+    user = get_user_by_id(uid) if uid else None
+    tariff = user.get("tariff", "free") if user else "free"
+    ops_count = count_operations_this_month(uid) if uid else 0
+    limit = TARIFF_LIMITS.get(tariff, 3)
+    
+    settings = get_settings_raw(uid) if uid else {}
+    has_proxyapi = bool(settings.get("proxyapi_key"))
+    has_deepseek = bool(settings.get("deepseek_key"))
+    has_s3 = bool(settings.get("s3_access_key") and settings.get("s3_endpoint"))
+    
+    # Проверка БД
+    db_ok = False
+    try:
+        from database import engine
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+            db_ok = True
+    except Exception:
+        pass
+    
+    return {
+        "db_ok": db_ok,
+        "db_type": "postgresql" if not IS_SQLITE else "sqlite",
+        "authenticated": bool(uid and user),
+        "tariff": tariff,
+        "scans_used": ops_count,
+        "scans_limit": limit,
+        "has_proxyapi": has_proxyapi,
+        "has_deepseek": has_deepseek,
+        "has_s3": has_s3,
+        "version": "2.0.0",
+    }
+
+
+@app.post("/api/check/proxyapi")
+async def check_proxyapi(request: Request):
+    """Проверка соединения с ProxyAPI."""
+    uid = await get_user_id(request)
+    if not uid:
+        return {"ok": False, "error": "Не авторизован"}
+    
+    settings = get_settings_raw(uid)
+    key = settings.get("proxyapi_key", "")
+    url = settings.get("proxyapi_url", "https://proxyapi.ru")
+    
+    if not key:
+        return {"ok": False, "error": "Ключ ProxyAPI не задан"}
+    
+    if not url.endswith("/chat/completions"):
+        check_url = f"{url.rstrip('/')}/chat/completions"
+    else:
+        check_url = url
+    
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                check_url,
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                json={
+                    "model": "openai/gpt-4o-mini",
+                    "messages": [{"role": "user", "content": "Hi"}],
+                    "max_tokens": 5,
+                },
+            )
+            if resp.status_code in (200, 400, 429):
+                return {"ok": True, "status": resp.status_code, "message": f"ProxyAPI отвечает (код {resp.status_code})"}
+            return {"ok": False, "error": f"ProxyAPI вернул {resp.status_code}: {resp.text[:200]}"}
+    except httpx.TimeoutException:
+        return {"ok": False, "error": "Таймаут соединения с ProxyAPI"}
+    except Exception as e:
+        return {"ok": False, "error": f"Ошибка соединения: {str(e)[:200]}"}
+
+
+@app.post("/api/check/deepseek")
+async def check_deepseek(request: Request):
+    """Проверка соединения с DeepSeek."""
+    uid = await get_user_id(request)
+    if not uid:
+        return {"ok": False, "error": "Не авторизован"}
+    
+    settings = get_settings_raw(uid)
+    key = settings.get("deepseek_key", "")
+    
+    if not key:
+        return {"ok": False, "error": "Ключ DeepSeek не задан"}
+    
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                "https://api.deepseek.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                json={
+                    "model": "deepseek-chat",
+                    "messages": [{"role": "user", "content": "Hi"}],
+                    "max_tokens": 5,
+                },
+            )
+            if resp.status_code in (200, 400, 429):
+                return {"ok": True, "status": resp.status_code, "message": f"DeepSeek отвечает (код {resp.status_code})"}
+            return {"ok": False, "error": f"DeepSeek вернул {resp.status_code}: {resp.text[:200]}"}
+    except httpx.TimeoutException:
+        return {"ok": False, "error": "Таймаут соединения с DeepSeek"}
+    except Exception as e:
+        return {"ok": False, "error": f"Ошибка соединения: {str(e)[:200]}"}
+
+
+@app.post("/api/check/s3")
+async def check_s3(request: Request):
+    """Проверка соединения с S3."""
+    uid = await get_user_id(request)
+    if not uid:
+        return {"ok": False, "error": "Не авторизован"}
+    
+    settings = get_settings_raw(uid)
+    endpoint = settings.get("s3_endpoint", "")
+    access = settings.get("s3_access_key", "")
+    secret = settings.get("s3_secret_key", "")
+    bucket = settings.get("s3_bucket", "")
+    
+    if not endpoint or not access:
+        return {"ok": False, "error": "S3 настройки неполные (endpoint + access_key обязательны)"}
+    
+    try:
+        import boto3
+        from botocore.client import Config
+        host = endpoint.removeprefix("https://").removeprefix("http://")
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=endpoint if endpoint.startswith("http") else f"https://{endpoint}",
+            aws_access_key_id=access,
+            aws_secret_access_key=secret,
+            config=Config(signature_version="s3v4", connect_timeout=10, read_timeout=10),
+            region_name="ru-central1",
+        )
+        if bucket:
+            s3.head_bucket(Bucket=bucket)
+            return {"ok": True, "message": f"S3 доступен, бакет «{bucket}» найден"}
+        else:
+            return {"ok": True, "message": "S3 доступен (бакет не указан)"}
+    except Exception as e:
+        return {"ok": False, "error": f"Ошибка S3: {str(e)[:200]}"}
+
+
 # ---------- Init ----------
 
 @app.on_event("startup")

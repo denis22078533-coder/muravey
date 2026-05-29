@@ -233,6 +233,72 @@ export async function confirmPayment(paymentId: string, tariff: string): Promise
   return await r.json();
 }
 
+// ==================== Health & Checks ====================
+
+export interface HealthStatus {
+  db_ok: boolean;
+  db_type: string;
+  authenticated: boolean;
+  tariff: string;
+  scans_used: number;
+  scans_limit: number;
+  has_proxyapi: boolean;
+  has_deepseek: boolean;
+  has_s3: boolean;
+  version: string;
+}
+
+export interface CheckResult {
+  ok: boolean;
+  status?: number;
+  message?: string;
+  error?: string;
+}
+
+export async function fetchHealth(): Promise<HealthStatus | null> {
+  try {
+    const r = await fetch(`${API_BASE}/health`, { headers: authHeaders() });
+    if (r.ok) return await r.json();
+  } catch { /* */ }
+  return null;
+}
+
+export async function checkProxyApi(): Promise<CheckResult> {
+  try {
+    const r = await fetch(`${API_BASE}/check/proxyapi`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
+    return await r.json();
+  } catch {
+    return { ok: false, error: 'Сетевая ошибка' };
+  }
+}
+
+export async function checkDeepSeek(): Promise<CheckResult> {
+  try {
+    const r = await fetch(`${API_BASE}/check/deepseek`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
+    return await r.json();
+  } catch {
+    return { ok: false, error: 'Сетевая ошибка' };
+  }
+}
+
+export async function checkS3(): Promise<CheckResult> {
+  try {
+    const r = await fetch(`${API_BASE}/check/s3`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
+    return await r.json();
+  } catch {
+    return { ok: false, error: 'Сетевая ошибка' };
+  }
+}
+
 // ==================== PDF ====================
 
 export async function downloadPDF(): Promise<Blob | null> {
