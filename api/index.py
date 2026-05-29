@@ -195,10 +195,17 @@ async def scan_receipt(req: ScanRequest, request: Request):
         image_url = f"data:image/jpeg;base64,{image_data}"
 
     # Распознавание
+    # Формируем URL ProxyAPI
+    base_url = get_header(request, "X-ProxyAPI-URL", "https://proxyapi.ru")
+    if not base_url.endswith("/chat/completions"):
+        proxy_url = f"{base_url.rstrip('/')}/chat/completions"
+    else:
+        proxy_url = base_url
+
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(
-                "https://proxyapi.ru/chat/completions",
+                proxy_url,
                 headers={"Authorization": f"Bearer {proxyapi_key}", "Content-Type": "application/json"},
                 json={
                     "model": selected_model,
