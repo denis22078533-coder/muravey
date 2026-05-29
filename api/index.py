@@ -9,10 +9,13 @@ from pydantic import BaseModel
 from mangum import Mangum
 import httpx
 
-# Инициализация БД при холодном старте
+# Инициализация БД при холодном старте (без падения если БД не настроена)
 from database import init_db, get_operations, save_operation, get_settings, save_settings, get_reports, save_report
 
-init_db()
+try:
+    init_db()
+except Exception:
+    pass  # БД не настроена — работаем без неё
 
 app = FastAPI(title="Babki Scan API")
 handler = Mangum(app)

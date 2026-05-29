@@ -127,93 +127,119 @@ def _ensure_sqlite_compat():
 
 
 def get_operations(user_id: str = "default") -> list[dict]:
-    with SessionLocal() as session:
-        rows = session.execute(
-            text("SELECT * FROM operations WHERE user_id = :uid ORDER BY date DESC"),
-            {"uid": user_id},
-        ).fetchall()
-        return [_row_to_dict(r) for r in rows]
+    try:
+        with SessionLocal() as session:
+            rows = session.execute(
+                text("SELECT * FROM operations WHERE user_id = :uid ORDER BY date DESC"),
+                {"uid": user_id},
+            ).fetchall()
+            return [_row_to_dict(r) for r in rows]
+    except Exception:
+        return []
 
 
 def save_operation(op: dict, user_id: str = "default"):
     import uuid as _uuid
-    with SessionLocal() as session:
-        session.execute(
-            text("""
-                INSERT INTO operations (id, user_id, date, place, total, type, items, raw_text)
-                VALUES (:id, :uid, :date, :place, :total, :type, :items, :raw)
-            """),
-            {
-                "id": op.get("id", _uuid.uuid4().hex),
-                "uid": user_id,
-                "date": op["date"],
-                "place": op.get("place", ""),
-                "total": op.get("total", 0),
-                "type": op.get("type", "expense"),
-                "items": json.dumps(op.get("items", [])),
-                "raw": op.get("raw_text", ""),
-            },
-        )
-        session.commit()
+    try:
+        with SessionLocal() as session:
+            session.execute(
+                text("""
+                    INSERT INTO operations (id, user_id, date, place, total, type, items, raw_text)
+                    VALUES (:id, :uid, :date, :place, :total, :type, :items, :raw)
+                """),
+                {
+                    "id": op.get("id", _uuid.uuid4().hex),
+                    "uid": user_id,
+                    "date": op["date"],
+                    "place": op.get("place", ""),
+                    "total": op.get("total", 0),
+                    "type": op.get("type", "expense"),
+                    "items": json.dumps(op.get("items", [])),
+                    "raw": op.get("raw_text", ""),
+                },
+            )
+            session.commit()
+    except Exception:
+        pass
 
 
 def get_settings(user_id: str = "default") -> dict:
-    with SessionLocal() as session:
-        row = session.execute(
-            text("SELECT * FROM ai_settings WHERE user_id = :uid"),
-            {"uid": user_id},
-        ).fetchone()
-        if not row:
-            return {}
-        return _row_to_dict(row)
+    try:
+        with SessionLocal() as session:
+            row = session.execute(
+                text("SELECT * FROM ai_settings WHERE user_id = :uid"),
+                {"uid": user_id},
+            ).fetchone()
+            if not row:
+                return {}
+            return _row_to_dict(row)
+    except Exception:
+        return {}
 
 
 def save_settings(data: dict, user_id: str = "default"):
-    with SessionLocal() as session:
-        existing = session.execute(
-            text("SELECT 1 FROM ai_settings WHERE user_id = :uid"),
-            {"uid": user_id},
-        ).fetchone()
-        if existing:
-            cols = ", ".join(f"{k} = :{k}" for k in data)
-            session.execute(
-                text(f"UPDATE ai_settings SET {cols}, updated_at = now() WHERE user_id = :uid"),
-                {**data, "uid": user_id},
-            )
-        else:
-            session.execute(
-                text("INSERT INTO ai_settings (user_id, " + ", ".join(data.keys()) + ") VALUES (:uid, " + ", ".join(f":{k}" for k in data) + ")"),
-                {"uid": user_id, **data},
-            )
-        session.commit()
+    ALLOWED = {
+        "proxyapi_key", "deepseek_key",
+        "s3_endpoint", "s3_access_key", "s3_secret_key", "s3_bucket",
+        "tariff", "sbp_tbank_key", "sbp_merchant_id",
+    }
+    filtered = {k: v for k, v in data.items() if k in ALLOWED}
+    if not filtered:
+        return
+    try:
+        with SessionLocal() as session:
+            existing = session.execute(
+                text("SELECT 1 FROM ai_settings WHERE user_id = :uid"),
+                {"uid": user_id},
+            ).fetchone()
+            if existing:
+                cols = ", ".join(f"{k} = :{k}" for k in filtered)
+                session.execute(
+                    text(f"UPDATE ai_settings SET {cols}, updated_at = now() WHERE user_id = :uid"),
+                    {**filtered, "uid": user_id},
+                )
+            else:
+                session.execute(
+                    text("INSERT INTO ai_settings (user_id, " + ", ".join(filtered.keys()) + ") VALUES (:uid, " + ", ".join(f":{k}" for k in filtered) + ")"),
+                    {"uid": user_id, **filtered},
+                )
+            session.commit()
+    except Exception:
+        pass
 
 
 def get_reports(user_id: str = "default") -> list[dict]:
-    with SessionLocal() as session:
-        rows = session.execute(
-            text("SELECT * FROM reports WHERE user_id = :uid ORDER BY created_at DESC"),
-            {"uid": user_id},
-        ).fetchall()
-        return [_row_to_dict(r) for r in rows]
+    try:
+        with SessionLocal() as session:
+            rows = session.execute(
+                text("SELECT * FROM reports WHERE user_id = :uid ORDER BY created_at DESC"),
+                {"uid": user_id},
+            ).fetchall()
+            return [_row_to_dict(r) for r in rows]
+    except Exception:
+        return []
 
 
 def save_report(entry: dict, user_id: str = "default"):
     import uuid as _uuid
-    with SessionLocal() as session:
-        session.execute(
-            text("""
-                INSERT INTO reports (id, user_id, date, period, status)
-                VALUES (:id, :uid, :date, :period, :status)
-            """),
-            {
-                "id": entry.get("id", _uuid.uuid4().hex),
-                "uid": user_id,
-                "date": entry["date"],
-                "period": entry["period"],
-                "status": entry.get("status", "Готов"),
-            },
-        )
-        session.commit()
+    try:
+        with SessionLocal() as session:
+            session.execute(
+                text("""
+                    INSERT INTO reports (id, user_id, date, period, status)
+                    VALUES (:id, :uid, :date, :period, :status)
+                """),
+                {
+                    "id": entry.get("id", _uuid.uuid4().hex),
+                    "uid": user_id,
+                    "date": entry["date"],
+                    "period": entry["period"],
+                    "status": entry.get("status", "Готов"),
+                },
+            )
+            session.commit()
+    except Exception:
+        pass
 
 
 def _row_to_dict(row) -> dict:
