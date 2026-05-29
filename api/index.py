@@ -1,17 +1,26 @@
-"""FastAPI backend for Babki Scan — SFTP + SQLite on remote VPS."""
+"""FastAPI backend for Babki Scan — PostgreSQL + JWT auth + AI receipt scanning."""
 import json
 import io
 import uuid
-import sqlite3
-import tempfile
+import base64
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from mangum import Mangum
 import httpx
+import jwt
+import bcrypt
+
+from database import (
+    init_db, create_user, get_user_by_email, get_user_by_id, update_user_tariff,
+    get_operations, save_operation, count_operations_this_month,
+    get_settings, get_settings_raw, save_settings,
+    get_reports, save_report,
+    create_payment, confirm_payment,
+)
 
 app = FastAPI(title="Babki Scan API")
 handler = Mangum(app)
@@ -23,103 +32,201 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ---------- JWT ----------
+JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
+JWT_EXPIRY_HOURS = 720  # 30 дней
 
-def get_header(request: Request, name: str, fallback: str = "") -> str:
-    for key, value in request.headers.items():
-        if key.lower() == name.lower():
-            return value
-    return fallback
+TARIFF_LIMITS = {"free": 3, "start": 50, "business": 500, "pro": 999_999}
 
-
-def get_sftp_connection(request: Request):
-    """SFTP-подключение к VPS через paramiko. Возвращает (sftp, temp_dir) или (None, None)."""
-    host = get_header(request, "X-Server-Host")
-    user = get_header(request, "X-Server-User", "root")
-    password = get_header(request, "X-Server-Password")
-    db_path = get_header(request, "X-Server-DB-Path", "/root/my-project-storage/babki.db")
-
-    if not host or not password:
-        return None, None, None
-
-    try:
-        import paramiko
-        transport = paramiko.Transport((host, 22))
-        transport.connect(username=user, password=password)
-        sftp = paramiko.SFTPClient.from_transport(transport)
-
-        # Скачиваем БД во временный файл
-        tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        tmp.close()
-        try:
-            sftp.get(db_path, tmp.name)
-        except FileNotFoundError:
-            # БД ещё нет — создаём новую
-            pass
-        except Exception:
-            pass
-
-        return sftp, tmp.name, db_path
-    except Exception:
-        return None, None, None
-
-
-def init_db_on_server(sftp, local_path: str, remote_path: str):
-    """Создаёт таблицу если её нет и заливает на сервер."""
-    conn = sqlite3.connect(local_path)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS receipts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            date TEXT NOT NULL,
-            total_amount REAL NOT NULL,
-            category TEXT NOT NULL,
-            items TEXT NOT NULL,
-            image_url TEXT
-        )
-    """)
-    conn.commit()
-    conn.close()
-    try:
-        sftp.put(local_path, remote_path)
-    except Exception:
-        pass
-
-
-def save_receipt_to_sftp(sftp, local_path: str, remote_path: str, user_id: str, receipt: dict):
-    """Сохраняет чек в БД на сервере."""
-    conn = sqlite3.connect(local_path)
-    conn.execute(
-        "INSERT INTO receipts (user_id, date, total_amount, category, items, image_url) VALUES (?,?,?,?,?,?)",
-        (
-            user_id,
-            receipt.get("date", datetime.now().isoformat()),
-            receipt.get("total", 0),
-            receipt.get("category", "Прочее"),
-            json.dumps(receipt.get("items", []), ensure_ascii=False),
-            receipt.get("image_url", ""),
-        ),
+def create_jwt(user_id: str) -> str:
+    return jwt.encode(
+        {"sub": user_id, "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRY_HOURS)},
+        JWT_SECRET, algorithm="HS256",
     )
-    conn.commit()
-    conn.close()
+
+def decode_jwt(token: str) -> str:
     try:
-        sftp.put(local_path, remote_path)
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        return payload.get("sub", "")
     except Exception:
-        pass
+        return ""
+
+async def get_user_id(request: Request) -> str:
+    """Извлекает user_id из JWT токена."""
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        uid = decode_jwt(auth[7:])
+        if uid:
+            return uid
+    # Fallback for old clients
+    return request.headers.get("X-User-ID", "")
 
 
-def get_receipts_from_sftp(local_path: str, user_id: str) -> list[dict]:
-    """Возвращает чеки пользователя."""
-    try:
-        conn = sqlite3.connect(local_path)
-        conn.row_factory = sqlite3.Row
-        rows = conn.execute(
-            "SELECT * FROM receipts WHERE user_id = ? ORDER BY date DESC", (user_id,)
-        ).fetchall()
-        conn.close()
-        return [dict(r) for r in rows]
-    except Exception:
+def check_tariff_limit(user_id: str) -> bool:
+    """True если лимит не превышен."""
+    user = get_user_by_id(user_id)
+    if not user:
+        return True
+    tariff = user.get("tariff", "free")
+    limit = TARIFF_LIMITS.get(tariff, 3)
+    count = count_operations_this_month(user_id)
+    return count < limit
+
+
+# ---------- Models ----------
+
+class AuthRequest(BaseModel):
+    email: str
+    password: str
+
+class ScanRequest(BaseModel):
+    image: str
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage]
+
+class OperationInput(BaseModel):
+    id: str | None = None
+    date: str
+    place: str = ""
+    total: float = 0
+    type: str = "expense"
+    items: list[dict] = []
+    raw_text: str = ""
+    image_url: str = ""
+
+class SettingsInput(BaseModel):
+    proxyapi_key: str = ""
+    proxyapi_url: str = ""
+    deepseek_key: str = ""
+    selected_model: str = ""
+    s3_endpoint: str = ""
+    s3_access_key: str = ""
+    s3_secret_key: str = ""
+    s3_bucket: str = ""
+    sbp_tbank_key: str = ""
+    sbp_merchant_id: str = ""
+
+class ReportInput(BaseModel):
+    id: str | None = None
+    date: str
+    period: str
+    status: str = "Готов"
+
+
+# ---------- Auth Endpoints ----------
+
+@app.post("/api/auth/register")
+async def register(req: AuthRequest):
+    if not req.email or not req.password:
+        return {"error": "Email и пароль обязательны"}
+    if len(req.password) < 4:
+        return {"error": "Пароль должен быть не менее 4 символов"}
+    existing = get_user_by_email(req.email)
+    if existing:
+        return {"error": "Пользователь с таким email уже существует"}
+    pw_hash = bcrypt.hashpw(req.password.encode(), bcrypt.gensalt()).decode()
+    user = create_user(req.email, pw_hash)
+    if not user:
+        return {"error": "Ошибка создания пользователя"}
+    token = create_jwt(user["id"])
+    return {"token": token, "user": user}
+
+
+@app.post("/api/auth/login")
+async def login(req: AuthRequest):
+    user = get_user_by_email(req.email)
+    if not user:
+        return {"error": "Неверный email или пароль"}
+    if not bcrypt.checkpw(req.password.encode(), user["password_hash"].encode()):
+        return {"error": "Неверный email или пароль"}
+    token = create_jwt(user["id"])
+    return {
+        "token": token,
+        "user": {"id": user["id"], "email": user["email"], "tariff": user["tariff"]},
+    }
+
+
+@app.get("/api/auth/me")
+async def me(request: Request):
+    uid = await get_user_id(request)
+    if not uid:
+        return {"error": "Не авторизован"}
+    user = get_user_by_id(uid)
+    if not user:
+        return {"error": "Пользователь не найден"}
+    return {"id": user["id"], "email": user["email"], "tariff": user["tariff"]}
+
+
+# ---------- Operations ----------
+
+@app.get("/api/operations")
+async def list_operations(request: Request):
+    uid = await get_user_id(request)
+    if not uid:
         return []
+    ops = get_operations(uid)
+    for op in ops:
+        try:
+            op["items"] = json.loads(op.get("items", "[]")) if isinstance(op.get("items"), str) else op.get("items", [])
+        except Exception:
+            op["items"] = []
+    return ops
 
+
+@app.post("/api/operations")
+async def create_operation(op: OperationInput, request: Request):
+    uid = await get_user_id(request)
+    if not uid:
+        uid = "default"
+    op_id = save_operation(op.model_dump(), uid)
+    return {"id": op_id, "status": "ok"}
+
+
+# ---------- Settings ----------
+
+@app.get("/api/settings")
+async def list_settings(request: Request):
+    uid = await get_user_id(request)
+    if not uid:
+        return {}
+    return get_settings(uid)
+
+
+@app.post("/api/settings")
+async def update_settings(data: SettingsInput, request: Request):
+    uid = await get_user_id(request)
+    if not uid:
+        return {"error": "Не авторизован"}
+    clean = {k: v for k, v in data.model_dump().items() if v}
+    save_settings(clean, uid)
+    return {"status": "ok"}
+
+
+# ---------- Reports ----------
+
+@app.get("/api/reports")
+async def list_reports(request: Request):
+    uid = await get_user_id(request)
+    if not uid:
+        return []
+    return get_reports(uid)
+
+
+@app.post("/api/reports")
+async def create_report(entry: ReportInput, request: Request):
+    uid = await get_user_id(request)
+    if not uid:
+        uid = "default"
+    rid = save_report(entry.model_dump(), uid)
+    return {"id": rid, "status": "ok"}
+
+
+# ---------- S3 Upload ----------
 
 def upload_to_s3(endpoint: str, access_key: str, secret_key: str, bucket: str, image_bytes: bytes) -> str | None:
     try:
@@ -141,52 +248,45 @@ def upload_to_s3(endpoint: str, access_key: str, secret_key: str, bucket: str, i
         return None
 
 
-# --- Models ---
-
-class ScanRequest(BaseModel):
-    image: str
-
-class ChatMessage(BaseModel):
-    role: str
-    content: str
-
-class ChatRequest(BaseModel):
-    messages: list[ChatMessage]
-
-
-# --- Routes ---
+# ---------- Scan Receipt ----------
 
 @app.post("/api/scan")
 async def scan_receipt(req: ScanRequest, request: Request):
-    """Сканирует чек, сохраняет в БД на VPS."""
-    proxyapi_key = get_header(request, "X-ProxyAPI-Key")
-    if not proxyapi_key:
-        return {"error": "X-ProxyAPI-Key header is missing or empty"}
+    """Сканирует чек через AI, сохраняет в БД."""
+    uid = await get_user_id(request)
+    if not uid:
+        uid = "default"
 
-    selected_model = get_header(request, "X-Selected-Model", "openai/gpt-4o-mini")
-    user_id = get_header(request, "X-User-ID", "default")
     image_data = req.image
-
     if not image_data:
         return {"error": "No image data provided"}
 
+    # Check tariff limit
+    if not check_tariff_limit(uid):
+        return {"error": "Лимит чеков исчерпан. Обновите тариф в разделе 🧠 Мозг."}
+
     try:
-        import base64
         image_bytes = base64.b64decode(image_data)
     except Exception:
         return {"error": "Invalid base64 image"}
 
-    # S3
+    # Get settings from DB (keys hidden from frontend)
+    settings = get_settings_raw(uid)
+    proxyapi_key = settings.get("proxyapi_key", "")
+    proxyapi_url = settings.get("proxyapi_url", "https://proxyapi.ru")
+    selected_model = settings.get("selected_model", "openai/gpt-4o-mini")
+
+    if not proxyapi_key:
+        return {"error": "API-ключ не настроен. Перейдите в раздел 🧠 Мозг."}
+
+    # S3 upload
     s3_cfg = {}
-    try:
-        s3_endpoint = get_header(request, "X-S3-Endpoint")
-        s3_access = get_header(request, "X-S3-Access-Key")
-        s3_secret = get_header(request, "X-S3-Secret-Key")
-        s3_bucket = get_header(request, "X-S3-Bucket")
-        if s3_endpoint and s3_access:
-            s3_cfg = {"endpoint": s3_endpoint, "access_key": s3_access, "secret_key": s3_secret, "bucket": s3_bucket}
-    except Exception:
-        pass
+    s3_endpoint = settings.get("s3_endpoint", "")
+    s3_access = settings.get("s3_access_key", "")
+    s3_secret = settings.get("s3_secret_key", "")
+    s3_bucket = settings.get("s3_bucket", "")
+    if s3_endpoint and s3_access:
+        s3_cfg = {"endpoint": s3_endpoint, "access_key": s3_access, "secret_key": s3_secret, "bucket": s3_bucket}
 
     image_url: str | None = None
     if s3_cfg:
@@ -194,13 +294,11 @@ async def scan_receipt(req: ScanRequest, request: Request):
     if image_url is None:
         image_url = f"data:image/jpeg;base64,{image_data}"
 
-    # Распознавание
-    # Формируем URL ProxyAPI
-    base_url = get_header(request, "X-ProxyAPI-URL", "https://proxyapi.ru")
-    if not base_url.endswith("/chat/completions"):
-        proxy_url = f"{base_url.rstrip('/')}/chat/completions"
+    # AI recognition via ProxyAPI
+    if not proxyapi_url.endswith("/chat/completions"):
+        proxy_url = f"{proxyapi_url.rstrip('/')}/chat/completions"
     else:
-        proxy_url = base_url
+        proxy_url = proxyapi_url
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -232,22 +330,16 @@ async def scan_receipt(req: ScanRequest, request: Request):
                     content = content.split("\n", 1)[-1].removesuffix("```")
                 result = json.loads(content)
 
-                # Сохраняем в БД на VPS
-                sftp, local_path, remote_path = get_sftp_connection(request)
-                if sftp and local_path:
-                    init_db_on_server(sftp, local_path, remote_path)
-                    save_receipt_to_sftp(sftp, local_path, remote_path, user_id, {
-                        "date": result.get("date", datetime.now().strftime("%d.%m.%Y")),
-                        "total": result.get("total", 0),
-                        "category": (result.get("items", [{}])[0].get("category", "Прочее") if result.get("items") else "Прочее"),
-                        "items": result.get("items", []),
-                        "image_url": image_url,
-                    })
-                    sftp.sftp.close() if hasattr(sftp, 'sftp') else None
-                    try:
-                        os.unlink(local_path)
-                    except Exception:
-                        pass
+                # Save to DB
+                save_operation({
+                    "date": result.get("date", datetime.now().strftime("%d.%m.%Y")),
+                    "place": result.get("place", ""),
+                    "total": result.get("total", 0),
+                    "type": "expense",
+                    "items": result.get("items", []),
+                    "raw_text": result.get("raw_text", ""),
+                    "image_url": image_url,
+                }, uid)
 
                 return result
             else:
@@ -260,106 +352,128 @@ async def scan_receipt(req: ScanRequest, request: Request):
         return {"error": f"Scan error: {str(e)[:200]}", "raw_text": ""}
 
 
+# ---------- Analytics ----------
+
 @app.get("/api/analytics")
 async def get_analytics(request: Request):
-    """Возвращает чеки пользователя для графиков."""
-    user_id = get_header(request, "X-User-ID", "default")
-    sftp, local_path, remote_path = get_sftp_connection(request)
-
-    if not sftp or not local_path:
+    uid = await get_user_id(request)
+    if not uid:
         return []
+    ops = get_operations(uid, limit=1000)
+    for op in ops:
+        try:
+            op["items"] = json.loads(op.get("items", "[]")) if isinstance(op.get("items"), str) else op.get("items", [])
+        except Exception:
+            op["items"] = []
+    return ops
 
-    # Синхронизируем сначала
-    try:
-        sftp.get(remote_path, local_path)
-    except Exception:
-        pass
 
-    receipts = get_receipts_from_sftp(local_path, user_id)
-
-    try:
-        sftp.sftp.close() if hasattr(sftp, 'sftp') else None
-        os.unlink(local_path)
-    except Exception:
-        pass
-
-    return receipts
-
+# ---------- PDF Report ----------
 
 @app.post("/api/reports/pdf")
 async def generate_pdf(request: Request):
-    """Генерирует PDF-отчёт через fpdf2."""
-    user_id = get_header(request, "X-User-ID", "default")
-    sftp, local_path, remote_path = get_sftp_connection(request)
+    """Генерирует PDF-отчёт."""
+    uid = await get_user_id(request)
+    if not uid:
+        return {"error": "Не авторизован"}
 
-    receipts = []
-    if sftp and local_path:
+    receipts = get_operations(uid, limit=1000)
+    for r in receipts:
         try:
-            sftp.get(remote_path, local_path)
+            r["items"] = json.loads(r.get("items", "[]")) if isinstance(r.get("items"), str) else r.get("items", [])
         except Exception:
-            pass
-        receipts = get_receipts_from_sftp(local_path, user_id)
-        try:
-            sftp.sftp.close() if hasattr(sftp, 'sftp') else None
-            os.unlink(local_path)
-        except Exception:
-            pass
+            r["items"] = []
 
     try:
         from fpdf import FPDF
 
         pdf = FPDF()
         pdf.add_page()
-        # Поддержка кириллицы
-        pdf.add_font("DejaVu", "", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", uni=True)
-        pdf.set_font("DejaVu", "", 16)
+        # Unicode font — try common paths
+        font_paths = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/TTF/DejaVuSans.ttf",
+            "DejaVuSans.ttf",
+        ]
+        font_loaded = False
+        for fp in font_paths:
+            try:
+                pdf.add_font("DejaVu", "", fp, uni=True)
+                font_loaded = True
+                break
+            except Exception:
+                continue
+
+        if font_loaded:
+            pdf.set_font("DejaVu", "", 16)
+        else:
+            pdf.set_font("Helvetica", size=16)
+
         pdf.cell(0, 10, "НАЛОГОВЫЙ ОТЧЁТ — Бабки Скан", ln=True, align="C")
         pdf.ln(5)
-        pdf.set_font("DejaVu", "", 10)
-        pdf.cell(0, 8, f"Пользователь: {user_id}", ln=True)
+        if font_loaded:
+            pdf.set_font("DejaVu", "", 10)
+        else:
+            pdf.set_font("Helvetica", size=10)
+        pdf.cell(0, 8, f"Пользователь: {uid}", ln=True)
         pdf.cell(0, 8, f"Дата: {datetime.now().strftime('%d.%m.%Y')}", ln=True)
         pdf.cell(0, 8, f"Операций: {len(receipts)}", ln=True)
-        total = sum(r.get("total_amount", 0) for r in receipts)
-        pdf.cell(0, 8, f"Итого расходов: {total:,.2f} ₽", ln=True)
+        total = sum(r.get("total", 0) for r in receipts)
+        pdf.cell(0, 8, f"Итого расходов: {total:,.2f} Р", ln=True)
         pdf.ln(5)
 
-        # Таблица
-        pdf.set_font("DejaVu", "", 8)
+        pdf.set_font("DejaVu" if font_loaded else "Helvetica", "", 8)
         pdf.cell(30, 6, "Дата", border=1)
         pdf.cell(25, 6, "Категория", border=1)
         pdf.cell(30, 6, "Сумма", border=1, align="R")
         pdf.cell(100, 6, "Товары", border=1)
         pdf.ln()
         for r in receipts:
-            items = json.loads(r.get("items", "[]"))
-            names = ", ".join(i.get("name", "")[:20] for i in items[:3])
-            pdf.cell(30, 6, r.get("date", "")[:10], border=1)
-            pdf.cell(25, 6, r.get("category", "")[:14], border=1)
-            pdf.cell(30, 6, f"{r.get('total_amount', 0):,.2f}", border=1, align="R")
+            cat = r.get("items", [{}])[0].get("category", "Прочее") if r.get("items") else "Прочее"
+            names = ", ".join(
+                i.get("name", "")[:20] for i in (r.get("items", []) or [])[:3]
+            )
+            pdf.cell(30, 6, str(r.get("date", ""))[:10], border=1)
+            pdf.cell(25, 6, cat[:14], border=1)
+            pdf.cell(30, 6, f"{r.get('total', 0):,.2f}", border=1, align="R")
             pdf.cell(100, 6, names[:45], border=1)
             pdf.ln()
 
         buf = pdf.output()
-        return Response(content=buf, media_type="application/pdf",
-                        headers={"Content-Disposition": f"attachment; filename=otchet_{user_id}.pdf"})
+        return Response(
+            content=buf, media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=otchet_{uid}.pdf"},
+        )
     except Exception as e:
         return {"error": f"PDF generation failed: {str(e)[:200]}"}
 
 
+# ---------- Chat ----------
+
 @app.post("/api/chat")
 async def chat(req: ChatRequest, request: Request):
     """Чат с DeepSeek V3."""
-    deepseek_key = get_header(request, "X-DeepSeek-Key")
+    uid = await get_user_id(request)
+    if not uid:
+        return {"error": "Не авторизован"}
+
+    settings = get_settings_raw(uid)
+    deepseek_key = settings.get("deepseek_key", "")
     if not deepseek_key:
-        return {"error": "X-DeepSeek-Key header is missing or empty"}
+        return {"error": "DeepSeek ключ не настроен. Перейдите в 🧠 Мозг."}
     if not req.messages:
         return {"error": "No messages provided"}
+
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(
                 "https://api.deepseek.com/v1/chat/completions",
                 headers={"Authorization": f"Bearer {deepseek_key}", "Content-Type": "application/json"},
-                json={"model": "deepseek-chat", "messages": [m.model_dump() for m in req.messages], "max_tokens": 1500, "temperature": 0.7},
+                json={
+                    "model": "deepseek-chat",
+                    "messages": [m.model_dump() for m in req.messages],
+                    "max_tokens": 1500, "temperature": 0.7,
+                },
             )
             if resp.status_code == 200:
                 data = resp.json()
@@ -372,3 +486,42 @@ async def chat(req: ChatRequest, request: Request):
         return {"error": f"Request error: {str(e)[:200]}"}
     except Exception as e:
         return {"error": f"Chat error: {str(e)[:200]}"}
+
+
+# ---------- Payments ----------
+
+@app.post("/api/payments/create")
+async def create_payment_endpoint(request: Request):
+    uid = await get_user_id(request)
+    if not uid:
+        return {"error": "Не авторизован"}
+    body = await request.json()
+    tariff = body.get("tariff", "start")
+    prices = {"start": 490, "business": 1490, "pro": 4990}
+    amount = body.get("amount", prices.get(tariff, 490))
+    pay_id = create_payment(uid, amount, tariff)
+    return {"payment_id": pay_id, "amount": amount, "tariff": tariff, "status": "pending"}
+
+
+@app.post("/api/payments/confirm")
+async def confirm_payment_endpoint(request: Request):
+    uid = await get_user_id(request)
+    if not uid:
+        return {"error": "Не авторизован"}
+    body = await request.json()
+    payment_id = body.get("payment_id", "")
+    tariff = body.get("tariff", "start")
+    if not payment_id:
+        return {"error": "payment_id required"}
+    ok = confirm_payment(payment_id)
+    if ok:
+        update_user_tariff(uid, tariff)
+        return {"status": "ok", "tariff": tariff}
+    return {"error": "Payment not found"}
+
+
+# ---------- Init ----------
+
+@app.on_event("startup")
+def startup():
+    init_db()

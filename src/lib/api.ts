@@ -1,5 +1,41 @@
 const API_BASE = '/api';
 
+// ==================== JWT Token ====================
+
+function getToken(): string {
+  try {
+    return localStorage.getItem('auth_token') || '';
+  } catch {
+    return '';
+  }
+}
+
+function setToken(t: string) {
+  try {
+    localStorage.setItem('auth_token', t);
+  } catch { /* silent */ }
+}
+
+export function clearToken() {
+  try {
+    localStorage.removeItem('auth_token');
+  } catch { /* silent */ }
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getToken();
+  if (token) return { Authorization: `Bearer ${token}` };
+  return {};
+}
+
+// ==================== Types ====================
+
+export interface User {
+  id: string;
+  email: string;
+  tariff: string;
+}
+
 export interface ScanResult {
   place?: string;
   date?: string;
@@ -22,16 +58,18 @@ export interface Operation {
   type: 'expense' | 'income';
   items: Array<{ name: string; quantity: number; price: number; sum: number; category?: string }>;
   raw_text?: string;
+  image_url?: string;
 }
 
 export interface AISettings {
   proxyapi_key: string;
+  proxyapi_url: string;
   deepseek_key: string;
+  selected_model: string;
   s3_endpoint: string;
   s3_access_key: string;
   s3_secret_key: string;
   s3_bucket: string;
-  tariff: string;
   sbp_tbank_key: string;
   sbp_merchant_id: string;
 }
@@ -43,159 +81,167 @@ export interface ReportEntry {
   status: string;
 }
 
-// --- localStorage fallback (пока нет БД) ---
-const storage = {
-  get(k: string): string | null {
-    try { return localStorage.getItem(k); } catch { return null; }
-  },
-  set(k: string, v: string) {
-    try { localStorage.setItem(k, v); } catch { /* silent */ }
-  },
-  getJSON<T>(k: string, fallback: T): T {
-    try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
-  },
-  setJSON(k: string, v: unknown) {
-    try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* silent */ }
-  },
-};
+// ==================== Auth ====================
 
-// --- Серверные заголовки ---
-function getServerHeaders(): Record<string, string> {
-  try {
-    const srv = JSON.parse(localStorage.getItem('server_config') || '{}');
-    return {
-      'X-Server-Host': srv.host || '',
-      'X-Server-User': srv.user || 'root',
-      'X-Server-Password': srv.password || '',
-      'X-Server-DB-Path': srv.dbpath || '/root/my-project-storage/babki.db',
-    };
-  } catch {
-    return {};
-  }
+export async function register(email: string, password: string): Promise<{ token: string; user: User } | { error: string }> {
+  const r = await fetch(`${API_BASE}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await r.json();
+  if (data.error) return { error: data.error };
+  setToken(data.token);
+  return data;
 }
 
-// --- Operations ---
+export async function login(email: string, password: string): Promise<{ token: string; user: User } | { error: string }> {
+  const r = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await r.json();
+  if (data.error) return { error: data.error };
+  setToken(data.token);
+  return data;
+}
+
+export async function fetchMe(): Promise<User | null> {
+  try {
+    const r = await fetch(`${API_BASE}/auth/me`, { headers: authHeaders() });
+    if (r.ok) return await r.json();
+  } catch { /* */ }
+  return null;
+}
+
+// ==================== Operations ====================
+
 export async function fetchOperations(): Promise<Operation[]> {
   try {
-    const r = await fetch(`${API_BASE}/operations`, {
-      headers: getServerHeaders(),
-    });
+    const r = await fetch(`${API_BASE}/operations`, { headers: authHeaders() });
     if (r.ok) return await r.json();
-  } catch { /* fallback */ }
-  return storage.getJSON<Operation[]>('ops', []);
+  } catch { /* */ }
+  return [];
 }
 
 export async function createOperation(op: Omit<Operation, 'id'> & { id?: string }): Promise<boolean> {
   try {
     const r = await fetch(`${API_BASE}/operations`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(op),
     });
-    if (r.ok) return true;
-  } catch { /* fallback */ }
-  // Локальный fallback
-  const ops = storage.getJSON<Operation[]>('ops', []);
-  ops.unshift({ ...op, id: op.id || Date.now().toString(36) } as Operation);
-  storage.setJSON('ops', ops);
-  return true;
+    return r.ok;
+  } catch {
+    return false;
+  }
 }
 
-// --- Settings ---
+// ==================== Settings ====================
+
 export async function fetchSettings(): Promise<AISettings> {
   try {
-    const r = await fetch(`${API_BASE}/settings`);
+    const r = await fetch(`${API_BASE}/settings`, { headers: authHeaders() });
     if (r.ok) return await r.json();
-  } catch { /* fallback */ }
-  return storage.getJSON<AISettings>('ai_cfg', {
-    proxyapi_key: '', deepseek_key: '',
+  } catch { /* */ }
+  return {
+    proxyapi_key: '', proxyapi_url: 'https://proxyapi.ru', deepseek_key: '',
+    selected_model: 'openai/gpt-4o-mini',
     s3_endpoint: '', s3_access_key: '', s3_secret_key: '', s3_bucket: '',
-    tariff: 'free', sbp_tbank_key: '', sbp_merchant_id: '',
-  });
+    sbp_tbank_key: '', sbp_merchant_id: '',
+  };
 }
 
 export async function saveSettings(cfg: Partial<AISettings>): Promise<boolean> {
   try {
     const r = await fetch(`${API_BASE}/settings`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(cfg),
     });
-    if (r.ok) return true;
-  } catch { /* fallback */ }
-  const current = await fetchSettings();
-  storage.setJSON('ai_cfg', { ...current, ...cfg });
-  return true;
+    return r.ok;
+  } catch {
+    return false;
+  }
 }
 
-// --- Reports ---
+// ==================== Reports ====================
+
 export async function fetchReports(): Promise<ReportEntry[]> {
   try {
-    const r = await fetch(`${API_BASE}/reports`);
+    const r = await fetch(`${API_BASE}/reports`, { headers: authHeaders() });
     if (r.ok) return await r.json();
-  } catch { /* fallback */ }
-  return storage.getJSON<ReportEntry[]>('reports', []);
+  } catch { /* */ }
+  return [];
 }
 
 export async function createReport(entry: Omit<ReportEntry, 'id'> & { id?: string }): Promise<boolean> {
   try {
     const r = await fetch(`${API_BASE}/reports`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(entry),
     });
-    if (r.ok) return true;
-  } catch { /* fallback */ }
-  const reports = storage.getJSON<ReportEntry[]>('reports', []);
-  reports.unshift({ ...entry, id: entry.id || Date.now().toString(36) } as ReportEntry);
-  storage.setJSON('reports', reports);
-  return true;
+    return r.ok;
+  } catch {
+    return false;
+  }
 }
 
-// --- Scan ---
-function getSelectedModel(): string {
-  try { return localStorage.getItem('X-Selected-Model') || 'openai/gpt-4o-mini'; } catch { return 'openai/gpt-4o-mini'; }
-}
+// ==================== Scan ====================
 
 export async function scanReceiptImage(base64: string): Promise<ScanResult> {
-  const settings = await fetchSettings();
-  const key = settings.proxyapi_key;
-  if (!key) return { error: 'Ключ ProxyAPI не задан. Перейдите в раздел 🧠 Мозг.' };
-
-  const model = getSelectedModel();
-    const r = await fetch(`${API_BASE}/scan`, {
+  const r = await fetch(`${API_BASE}/scan`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-ProxyAPI-Key': key,
-      'X-Selected-Model': model,
-      'X-User-ID': 'default',
-      ...getServerHeaders(),
-    },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ image: base64 }),
   });
-  if (!r.ok) {
-    const err = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
-    return { error: err.error || `HTTP ${r.status}` };
-  }
   return await r.json();
 }
 
-// --- Chat ---
-export async function chatWithAI(messages: ChatMessage[]): Promise<string> {
-  const settings = await fetchSettings();
-  const key = settings.deepseek_key;
-  if (!key) throw new Error('Ключ DeepSeek не задан. Зайдите в 🧠 Мозг.');
+// ==================== Chat ====================
 
+export async function chatWithAI(messages: ChatMessage[]): Promise<string> {
   const r = await fetch(`${API_BASE}/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-DeepSeek-Key': key },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ messages }),
   });
-  if (!r.ok) {
-    const err = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
-    throw new Error(err.error || `HTTP ${r.status}`);
-  }
   const data = await r.json();
+  if (data.error) throw new Error(data.error);
   return data.reply ?? '';
+}
+
+// ==================== Payments ====================
+
+export async function createPayment(tariff: string): Promise<{ payment_id?: string; error?: string }> {
+  const r = await fetch(`${API_BASE}/payments/create`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ tariff }),
+  });
+  return await r.json();
+}
+
+export async function confirmPayment(paymentId: string, tariff: string): Promise<{ status?: string; error?: string }> {
+  const r = await fetch(`${API_BASE}/payments/confirm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ payment_id: paymentId, tariff }),
+  });
+  return await r.json();
+}
+
+// ==================== PDF ====================
+
+export async function downloadPDF(): Promise<Blob | null> {
+  try {
+    const r = await fetch(`${API_BASE}/reports/pdf`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
+    if (r.ok) return await r.blob();
+  } catch { /* */ }
+  return null;
 }

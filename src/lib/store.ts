@@ -10,12 +10,13 @@ export interface ReceiptItem {
 
 export interface Operation {
   id: string;
-  date: string;       // ISO string
+  date: string;
   place: string;
   total: number;
   type: 'expense' | 'income';
   items: ReceiptItem[];
   raw_text?: string;
+  image_url?: string;
 }
 
 export type Tariff = 'free' | 'start' | 'business' | 'pro';
@@ -32,7 +33,30 @@ export interface SBPConfig {
   merchantId: string;
 }
 
-// --- Операции ---
+export interface ReportEntry {
+  id: string;
+  date: string;
+  period: string;
+  status: string;
+}
+
+// ==================== Auth ====================
+const TOKEN_KEY = 'auth_token';
+
+export const getToken = (): string => {
+  try { return localStorage.getItem(TOKEN_KEY) || ''; }
+  catch { return ''; }
+};
+
+export const setToken = (t: string) => {
+  try { localStorage.setItem(TOKEN_KEY, t); } catch { /* */ }
+};
+
+export const clearToken = () => {
+  try { localStorage.removeItem(TOKEN_KEY); } catch { /* */ }
+};
+
+// ==================== Операции ====================
 const OPS_KEY = 'babki_operations';
 
 export const loadOperations = (): Operation[] => {
@@ -55,7 +79,7 @@ export const addOperation = (op: Operation) => {
   saveOperations(ops);
 };
 
-// --- Тариф ---
+// ==================== Тариф ====================
 const TARIFF_KEY = 'babki_tariff';
 
 export const getTariff = (): Tariff => {
@@ -72,13 +96,12 @@ export const setTariff = (t: Tariff) => {
   } catch { /* silent */ }
 };
 
-// Лимит сканирований для free
 export const MAX_FREE_SCANS = 3;
 export const getFreeScanCount = (): number => {
   return loadOperations().filter(o => o.type === 'expense').length;
 };
 
-// --- S3 ---
+// ==================== S3 ====================
 const S3_KEY = 'babki_s3';
 
 export const getS3Config = (): S3Config => {
@@ -95,7 +118,7 @@ export const setS3Config = (cfg: S3Config) => {
   } catch { /* silent */ }
 };
 
-// --- СБП ---
+// ==================== СБП ====================
 const SBP_KEY = 'babki_sbp';
 
 export const getSBPConfig = (): SBPConfig => {
@@ -112,14 +135,7 @@ export const setSBPConfig = (cfg: SBPConfig) => {
   } catch { /* silent */ }
 };
 
-// --- Отчёты (архив) ---
-export interface ReportEntry {
-  id: string;
-  date: string;
-  period: string;
-  status: string;
-}
-
+// ==================== Отчёты (архив) ====================
 const REPORTS_KEY = 'babki_reports';
 
 export const loadReports = (): ReportEntry[] => {

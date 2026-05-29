@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import ReceiptUploader from '../components/ReceiptUploader';
-import { scanReceiptImage, fetchOperations, createOperation, fetchSettings, ScanResult, Operation } from '../lib/api';
+import { scanReceiptImage, fetchOperations, createOperation, ScanResult, Operation, User } from '../lib/api';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -14,27 +14,31 @@ const CATEGORY_COLORS: Record<string, string> = {
 const CHART_PLACEHOLDER = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек']
   .map(m => ({ month: m, доход: 0, расход: 0 }));
 
-const MAX_FREE = 3;
+const TARIFF_LIMITS: Record<string, number> = { free: 3, start: 50, business: 500, pro: 999999 };
 
-export default function Home() {
+interface Props {
+  user: User;
+}
+
+export default function Home({ user }: Props) {
   const [operations, setOperations] = useState<Operation[]>([]);
-  const [tariff, setTariff] = useState('free');
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     fetchOperations().then(setOperations);
-    fetchSettings().then(s => setTariff(s.tariff || 'free'));
   }, []);
 
   const refreshOps = () => fetchOperations().then(setOperations);
+
   const expenseCount = operations.filter(o => o.type === 'expense').length;
-  const limitReached = tariff === 'free' && expenseCount >= MAX_FREE;
+  const tariffLimit = TARIFF_LIMITS[user.tariff] || 3;
+  const limitReached = expenseCount >= tariffLimit;
 
   const handleImageReady = async (base64: string) => {
     if (limitReached) {
-      setScanError('Лимит исчерпан (3 чека). Перейдите в 🧠 Мозг → Тарифы.');
+      setScanError(`Лимит исчерпан (${tariffLimit} чеков). Обновите тариф в 🧠 Мозг.`);
       return;
     }
     setScanning(true); setScanError(null); setScanResult(null);
@@ -86,7 +90,7 @@ export default function Home() {
           { title: 'Доходы', value: totalIncome, color: 'text-green-400' },
           { title: 'Расходы', value: totalExpense, color: 'text-red-400' },
           { title: 'Баланс', value: totalIncome - totalExpense, color: 'text-amber-400' },
-          { title: 'Чеков', value: expenseCount, color: 'text-zinc-300' },
+          { title: 'Чеков', value: `${expenseCount}/${tariffLimit}`, color: 'text-zinc-300' },
         ].map((card, i) => (
           <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
             <p className="text-xs text-zinc-500">{card.title}</p>
@@ -132,7 +136,9 @@ export default function Home() {
 
       <section className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
         <h3 className="text-sm font-semibold text-zinc-300 mb-3">📸 Сканировать чек</h3>
-        {tariff === 'free' && <div className="mb-3 text-xs text-zinc-500">FREE: {expenseCount}/{MAX_FREE} чеков</div>}
+        <div className="mb-3 text-xs text-zinc-500">
+          {user.tariff.toUpperCase()}: {expenseCount}/{tariffLimit} чеков
+        </div>
         {limitReached && <div className="mb-3 bg-red-900/30 border border-red-800 rounded-lg p-3 text-sm text-red-300">🚫 Лимит исчерпан. Перейдите в 🧠 Мозг → Тарифы.</div>}
         <ReceiptUploader onImageReady={handleImageReady} />
         {scanning && <div className="mt-3 text-center text-amber-400 animate-pulse text-sm">🔍 Распознаю...</div>}

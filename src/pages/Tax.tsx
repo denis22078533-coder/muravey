@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import {
-  fetchOperations, createReport, fetchReports, fetchSettings,
+  fetchOperations, createReport, fetchReports, downloadPDF,
   Operation, ReportEntry,
 } from '../lib/api';
 
@@ -12,15 +12,11 @@ export default function Tax() {
   const [period, setPeriod] = useState<Period>('Y');
   const [reports, setReports] = useState<ReportEntry[]>([]);
   const [loading, setLoading] = useState(false);
-  const [tariff, setTariff] = useState('free');
 
   useEffect(() => {
     fetchOperations().then(setOperations);
     fetchReports().then(setReports);
-    fetchSettings().then(s => setTariff(s.tariff || 'free'));
   }, []);
-
-  const canExport = tariff === 'business' || tariff === 'pro';
 
   const filtered = useMemo(() => {
     const y = new Date().getFullYear();
@@ -42,7 +38,7 @@ export default function Tax() {
   const expenseTotal = filtered.filter(o => o.type === 'expense').reduce((s, o) => s + o.total, 0);
   const taxBase = incomeTotal - expenseTotal;
 
-  const downloadCSV = () => {
+  const handleCSV = () => {
     const h = 'Дата,Тип,Место,Сумма,Категория\n';
     const rows = filtered.map(o =>
       `${new Date(o.date).toLocaleDateString('ru')},${o.type === 'income' ? 'Доход' : 'Расход'},"${o.place}",${o.total.toFixed(2)},${o.items?.[0]?.category || '—'}`
@@ -52,20 +48,20 @@ export default function Tax() {
     a.download = `otchet_${period}_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
   };
 
-  const downloadPDF = () => {
+  const handlePDF = async () => {
     setLoading(true);
-    const text = [
-      `НАЛОГОВЫЙ ОТЧЁТ — Бабки Скан`, `Период: ${PERIOD_LABELS[period]}`,
-      `Доходы: ${incomeTotal.toFixed(2)} ₽`, `Расходы: ${expenseTotal.toFixed(2)} ₽`,
-      `Налог. база: ${taxBase.toFixed(2)} ₽`, ``,
-      ...filtered.map(o => `${new Date(o.date).toLocaleDateString('ru')} | ${o.type === 'income' ? '+' : '-'}${o.total} ₽ | ${o.place}`),
-    ].join('\n');
-    setTimeout(() => {
-      const blob = new Blob([text], { type: 'text/plain;charset=utf-8;' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-      a.download = `nalog_${period}_${new Date().toISOString().slice(0, 10)}.txt`; a.click();
-      setLoading(false);
-    }, 2000);
+    try {
+      const blob = await downloadPDF();
+      if (blob) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `otchet_${period}_${new Date().toISOString().slice(0, 10)}.pdf`;
+        a.click();
+      }
+    } catch (e) {
+      console.error('PDF error', e);
+    }
+    setLoading(false);
   };
 
   const handleAddReport = async () => {
@@ -126,10 +122,11 @@ export default function Tax() {
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
         <h3 className="text-sm font-semibold text-zinc-300">📥 Экспорт</h3>
-        {!canExport && <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-xs text-zinc-500">🔒 Экспорт доступен на тарифах Бизнес и Профи.</div>}
         <div className="flex gap-3 flex-wrap">
-          <button onClick={downloadCSV} disabled={!canExport || filtered.length === 0} className="px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 text-black font-bold text-sm rounded-lg">📊 CSV</button>
-          <button onClick={downloadPDF} disabled={!canExport || filtered.length === 0} className="px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-30 text-white font-bold text-sm rounded-lg">{loading ? '⏳ PDF...' : '📄 PDF'}</button>
+          <button onClick={handleCSV} disabled={filtered.length === 0} className="px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-30 text-black font-bold text-sm rounded-lg">📊 CSV</button>
+          <button onClick={handlePDF} disabled={filtered.length === 0} className="px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-30 text-white font-bold text-sm rounded-lg">
+            {loading ? '⏳ PDF...' : '📄 PDF (сервер)'}
+          </button>
           <button onClick={handleAddReport} disabled={filtered.length === 0} className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-30 text-white text-sm rounded-lg">🗂️ Сохранить</button>
         </div>
       </div>
