@@ -2,8 +2,8 @@ import { useState, useCallback } from 'react';
 import { getProxyApiKey, setProxyApiKey, getDeepSeekKey, setDeepSeekKey } from '../lib/api';
 
 export default function Brain() {
-  const [proxyapiKey, setProxyapiKeyLocal] = useState(getProxyApiKey);
-  const [deepseekKey, setDeepseekKeyLocal] = useState(getDeepSeekKey);
+  const [proxyapiKey, setProxyapiKeyLocal] = useState(() => getProxyApiKey());
+  const [deepseekKey, setDeepseekKeyLocal] = useState(() => getDeepSeekKey());
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   const handleSave = useCallback(() => {

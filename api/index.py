@@ -1,8 +1,7 @@
 """FastAPI backend for Babki Scan — Vercel serverless (stateless)."""
 import json
-from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from mangum import Mangum
@@ -120,8 +119,8 @@ async def scan_receipt(req: ScanRequest, request: Request):
                 return {"error": f"ProxyAPI returned {resp.status_code}: {detail}", "raw_text": ""}
     except httpx.TimeoutException:
         return {"error": "ProxyAPI timeout", "raw_text": ""}
-    except httpx.ConnectError:
-        return {"error": "Cannot connect to ProxyAPI", "raw_text": ""}
+    except httpx.RequestError as e:
+        return {"error": f"Request error: {str(e)[:200]}", "raw_text": ""}
     except Exception as e:
         return {"error": f"Scan error: {str(e)[:200]}", "raw_text": ""}
 
@@ -164,7 +163,7 @@ async def chat(req: ChatRequest, request: Request):
                 return {"error": f"DeepSeek API returned {resp.status_code}: {detail}"}
     except httpx.TimeoutException:
         return {"error": "DeepSeek API timeout"}
-    except httpx.ConnectError:
-        return {"error": "Cannot connect to DeepSeek API"}
+    except httpx.RequestError as e:
+        return {"error": f"Request error: {str(e)[:200]}"}
     except Exception as e:
         return {"error": f"Chat error: {str(e)[:200]}"}
