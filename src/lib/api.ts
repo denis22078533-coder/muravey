@@ -59,10 +59,27 @@ const storage = {
   },
 };
 
+// --- Серверные заголовки ---
+function getServerHeaders(): Record<string, string> {
+  try {
+    const srv = JSON.parse(localStorage.getItem('server_config') || '{}');
+    return {
+      'X-Server-Host': srv.host || '',
+      'X-Server-User': srv.user || 'root',
+      'X-Server-Password': srv.password || '',
+      'X-Server-DB-Path': srv.dbpath || '/root/my-project-storage/babki.db',
+    };
+  } catch {
+    return {};
+  }
+}
+
 // --- Operations ---
 export async function fetchOperations(): Promise<Operation[]> {
   try {
-    const r = await fetch(`${API_BASE}/operations`);
+    const r = await fetch(`${API_BASE}/operations`, {
+      headers: getServerHeaders(),
+    });
     if (r.ok) return await r.json();
   } catch { /* fallback */ }
   return storage.getJSON<Operation[]>('ops', []);
@@ -146,12 +163,14 @@ export async function scanReceiptImage(base64: string): Promise<ScanResult> {
   if (!key) return { error: 'Ключ ProxyAPI не задан. Перейдите в раздел 🧠 Мозг.' };
 
   const model = getSelectedModel();
-  const r = await fetch(`${API_BASE}/scan`, {
+    const r = await fetch(`${API_BASE}/scan`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-ProxyAPI-Key': key,
       'X-Selected-Model': model,
+      'X-User-ID': 'default',
+      ...getServerHeaders(),
     },
     body: JSON.stringify({ image: base64 }),
   });
