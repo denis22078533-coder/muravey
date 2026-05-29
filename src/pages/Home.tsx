@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import ReceiptUploader from '../components/ReceiptUploader';
-import { scanReceiptImage, chatWithAI, fetchAISettings, ScanResult, ChatMessage } from '../lib/api';
+import { scanReceiptImage, chatWithAI, ScanResult, ChatMessage } from '../lib/api';
 
 export default function Home() {
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
@@ -10,27 +10,16 @@ export default function Home() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
 
-  const handleImageReady = async (base64: string, _previewUrl: string) => {
+  const handleImageReady = async (base64: string) => {
     setScanning(true);
     setScanError(null);
     setScanResult(null);
 
-    try {
-      const settings = await fetchAISettings();
-      const proxyapiKey = settings?.proxyapi_key || '';
-      if (!proxyapiKey) {
-        setScanError('Ключ ProxyAPI не задан. Перейдите в раздел 🧠 Мозг.');
-        setScanning(false);
-        return;
-      }
-      const result = await scanReceiptImage(base64, proxyapiKey);
-      if (result.error) {
-        setScanError(result.error);
-      } else {
-        setScanResult(result);
-      }
-    } catch (e: any) {
-      setScanError(e.message || 'Ошибка сканирования');
+    const result = await scanReceiptImage(base64);
+    if (result.error) {
+      setScanError(result.error);
+    } else {
+      setScanResult(result);
     }
     setScanning(false);
   };
@@ -44,14 +33,7 @@ export default function Home() {
     setChatLoading(true);
 
     try {
-      const settings = await fetchAISettings();
-      const deepseekKey = settings?.deepseek_api_key || '';
-      if (!deepseekKey) {
-        setChatMessages([...updated, { role: 'assistant', content: 'Ключ DeepSeek не задан. Зайдите в 🧠 Мозг.' }]);
-        setChatLoading(false);
-        return;
-      }
-      const reply = await chatWithAI(updated, deepseekKey);
+      const reply = await chatWithAI(updated);
       setChatMessages([...updated, { role: 'assistant', content: reply }]);
     } catch (e: any) {
       setChatMessages([...updated, { role: 'assistant', content: `Ошибка: ${e.message}` }]);

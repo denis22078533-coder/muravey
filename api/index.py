@@ -1,9 +1,5 @@
-"""FastAPI backend for Babki Scan — Vercel serverless."""
+"""FastAPI backend for Babki Scan — Vercel serverless (stateless)."""
 import json
-import os
-import base64
-import uuid
-from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request
@@ -22,97 +18,48 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-SETTINGS_FILE = Path("/tmp/ai_settings.json")
-FALLBACK_SETTINGS_FILE = Path(__file__).parent / "ai_settings.json"
 
-
-def read_settings() -> dict:
-    """Читает настройки из /tmp (primary) или из локального файла."""
-    for path in (SETTINGS_FILE, FALLBACK_SETTINGS_FILE):
-        if path.exists():
-            try:
-                return json.loads(path.read_text(encoding="utf-8"))
-            except Exception:
-                pass
-    return {
-        "deepseek_api_key": os.getenv("DEEPSEEK_API_KEY", ""),
-        "proxyapi_key": os.getenv("PROXYAPI_KEY", ""),
-        "s3_endpoint": os.getenv("S3_ENDPOINT", ""),
-        "s3_access_key": os.getenv("S3_ACCESS_KEY", ""),
-        "s3_secret_key": os.getenv("S3_SECRET_KEY", ""),
-        "s3_bucket": os.getenv("S3_BUCKET", ""),
-    }
-
-
-def write_settings(settings: dict) -> None:
-    """Сохраняет настройки в /tmp (serverless-safe)."""
-    SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    SETTINGS_FILE.write_text(json.dumps(settings, ensure_ascii=False, indent=2), encoding="utf-8")
-    # Также сохраняем локально если возможно
-    try:
-        FALLBACK_SETTINGS_FILE.write_text(
-            json.dumps(settings, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
-    except Exception:
-        pass
+def get_header(request: Request, name: str, fallback: str = "") -> str:
+    """Извлекает значение из заголовка (регистронезависимо)."""
+    for key, value in request.headers.items():
+        if key.lower() == name.lower():
+            return value
+    return fallback
 
 
 # --- Models ---
 
-class SettingsPayload(BaseModel):
-    deepseek_api_key: Optional[str] = None
-    proxyapi_key: Optional[str] = None
-    s3_endpoint: Optional[str] = None
-    s3_access_key: Optional[str] = None
-    s3_secret_key: Optional[str] = None
-    s3_bucket: Optional[str] = None
-
-
 class ScanRequest(BaseModel):
-    image: str  # base64-encoded image data (without prefix)
-    proxyapi_key: str = ""
+    image: str  # base64-encoded image data (без data:image/... префикса)
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
 
 
 class ChatRequest(BaseModel):
-    messages: list[dict]  # [{"role":"user","content":"..."}]
-    deepseek_api_key: str = ""
+    messages: list[ChatMessage]
 
 
 # --- Routes ---
 
-@app.get("/api/settings")
-async def get_settings():
-    """Возвращает текущие настройки AI и S3."""
-    return read_settings()
-
-
-@app.post("/api/settings")
-async def save_settings(payload: SettingsPayload):
-    """Сохраняет настройки AI и S3."""
-    current = read_settings()
-    update = payload.model_dump(exclude_none=True)
-    current.update(update)
-    write_settings(current)
-    return {"ok": True}
-
-
 @app.post("/api/scan")
-async def scan_receipt(req: ScanRequest):
+async def scan_receipt(req: ScanRequest, request: Request):
     """
     Распознаёт чек через ProxyAPI (модель openai/gpt-4o-mini).
-    Принимает base64-изображение.
-    Если S3 или ProxyAPI недоступны — возвращает Base64 fallback вместо 500.
+    Ключ ProxyAPI передаётся в заголовке X-ProxyAPI-Key.
+    НИКОГДА не возвращает 500 — всегда структурированный JSON.
     """
-    proxyapi_key = req.proxyapi_key or read_settings().get("proxyapi_key", "")
+    proxyapi_key = get_header(request, "X-ProxyAPI-Key")
     if not proxyapi_key:
-        raise HTTPException(status_code=400, detail="PROXYAPI_KEY not configured")
+        return {"error": "X-ProxyAPI-Key header is missing or empty"}
 
     image_data = req.image
     if not image_data:
-        raise HTTPException(status_code=400, detail="No image data provided")
+        return {"error": "No image data provided"}
 
     try:
-        # Попытка распознавания через ProxyAPI
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(
                 "https://proxyapi.ru/api/v1/chat/completions",
@@ -159,7 +106,6 @@ async def scan_receipt(req: ScanRequest):
             if resp.status_code == 200:
                 data = resp.json()
                 content = data.get("choices", [{}])[0].get("message", {}).get("content", "{}")
-                # Очистка от markdown-разметки
                 content = content.strip()
                 if content.startswith("```"):
                     content = content.split("\n", 1)[-1]
@@ -168,10 +114,9 @@ async def scan_receipt(req: ScanRequest):
                 try:
                     return json.loads(content)
                 except json.JSONDecodeError:
-                    return {"raw_text": content, "error": None}
+                    return {"raw_text": content}
             else:
                 detail = resp.text[:300]
-                # Fallback: возвращаем ошибку без 500
                 return {"error": f"ProxyAPI returned {resp.status_code}: {detail}", "raw_text": ""}
     except httpx.TimeoutException:
         return {"error": "ProxyAPI timeout", "raw_text": ""}
@@ -182,16 +127,17 @@ async def scan_receipt(req: ScanRequest):
 
 
 @app.post("/api/chat")
-async def chat(req: ChatRequest):
+async def chat(req: ChatRequest, request: Request):
     """
-    Чат с DeepSeek V3 через DEEPSEEK_API_KEY.
+    Чат с DeepSeek V3.
+    Ключ DeepSeek передаётся в заголовке X-DeepSeek-Key.
     """
-    deepseek_key = req.deepseek_api_key or read_settings().get("deepseek_api_key", "")
+    deepseek_key = get_header(request, "X-DeepSeek-Key")
     if not deepseek_key:
-        raise HTTPException(status_code=400, detail="DEEPSEEK_API_KEY not configured")
+        return {"error": "X-DeepSeek-Key header is missing or empty"}
 
     if not req.messages:
-        raise HTTPException(status_code=400, detail="No messages provided")
+        return {"error": "No messages provided"}
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -203,7 +149,7 @@ async def chat(req: ChatRequest):
                 },
                 json={
                     "model": "deepseek-chat",
-                    "messages": req.messages,
+                    "messages": [m.model_dump() for m in req.messages],
                     "max_tokens": 1500,
                     "temperature": 0.7,
                 },
@@ -215,15 +161,10 @@ async def chat(req: ChatRequest):
                 return {"reply": reply}
             else:
                 detail = resp.text[:300]
-                raise HTTPException(
-                    status_code=502,
-                    detail=f"DeepSeek API returned {resp.status_code}: {detail}",
-                )
-    except HTTPException:
-        raise
+                return {"error": f"DeepSeek API returned {resp.status_code}: {detail}"}
     except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="DeepSeek API timeout")
+        return {"error": "DeepSeek API timeout"}
     except httpx.ConnectError:
-        raise HTTPException(status_code=502, detail="Cannot connect to DeepSeek API")
+        return {"error": "Cannot connect to DeepSeek API"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Chat error: {str(e)[:200]}")
+        return {"error": f"Chat error: {str(e)[:200]}"}

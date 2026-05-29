@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 
 interface ReceiptUploaderProps {
-  onImageReady: (base64: string, previewUrl: string) => void;
+  onImageReady: (base64: string) => void;
 }
 
 export default function ReceiptUploader({ onImageReady }: ReceiptUploaderProps) {
@@ -19,7 +19,7 @@ export default function ReceiptUploader({ onImageReady }: ReceiptUploaderProps) 
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64 = (reader.result as string).split(',')[1];
-        onImageReady(base64, previewUrl);
+        onImageReady(base64);
         setLoading(false);
       };
       reader.readAsDataURL(file);
