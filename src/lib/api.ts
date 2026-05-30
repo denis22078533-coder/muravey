@@ -12,18 +12,6 @@ function getToken(): string {
   }
 }
 
-function setToken(t: string) {
-  try {
-    localStorage.setItem('auth_token', t);
-  } catch { /* silent */ }
-}
-
-export function clearToken() {
-  try {
-    localStorage.removeItem('auth_token');
-  } catch { /* silent */ }
-}
-
 function authHeaders(): Record<string, string> {
   const token = getToken();
   if (token) return { Authorization: `Bearer ${token}` };
@@ -45,11 +33,6 @@ export interface ScanResult {
   total?: number;
   raw_text?: string;
   error?: string;
-}
-
-export interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
 }
 
 export interface Operation {
@@ -83,40 +66,6 @@ export interface ReportEntry {
   date: string;
   period: string;
   status: string;
-}
-
-// ==================== Auth ====================
-
-export async function register(email: string, password: string): Promise<{ token: string; user: User } | { error: string }> {
-  const r = await fetch(`${API_BASE}/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
-  const data = await r.json();
-  if (data.error) return { error: data.error };
-  setToken(data.token);
-  return data;
-}
-
-export async function login(email: string, password: string): Promise<{ token: string; user: User } | { error: string }> {
-  const r = await fetch(`${API_BASE}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
-  const data = await r.json();
-  if (data.error) return { error: data.error };
-  setToken(data.token);
-  return data;
-}
-
-export async function fetchMe(): Promise<User | null> {
-  try {
-    const r = await fetch(`${API_BASE}/auth/me`, { headers: authHeaders() });
-    if (r.ok) return await r.json();
-  } catch { /* */ }
-  return null;
 }
 
 // ==================== Operations ====================
@@ -203,19 +152,6 @@ export async function scanReceiptImage(base64: string): Promise<ScanResult> {
     body: JSON.stringify({ image: base64 }),
   });
   return await r.json();
-}
-
-// ==================== Chat ====================
-
-export async function chatWithAI(messages: ChatMessage[]): Promise<string> {
-  const r = await fetch(`${API_BASE}/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ messages }),
-  });
-  const data = await r.json();
-  if (data.error) throw new Error(data.error);
-  return data.reply ?? '';
 }
 
 // ==================== Payments ====================

@@ -6,7 +6,7 @@ import base64
 import os
 from datetime import datetime, timedelta
 
-from fastapi import FastAPI, Request, Response, HTTPException, Depends
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from mangum import Mangum
@@ -350,22 +350,6 @@ async def scan_receipt(req: ScanRequest, request: Request):
         return {"error": f"Request error: {str(e)[:200]}", "raw_text": ""}
     except Exception as e:
         return {"error": f"Scan error: {str(e)[:200]}", "raw_text": ""}
-
-
-# ---------- Analytics ----------
-
-@app.get("/api/analytics")
-async def get_analytics(request: Request):
-    uid = await get_user_id(request)
-    if not uid:
-        return []
-    ops = get_operations(uid, limit=1000)
-    for op in ops:
-        try:
-            op["items"] = json.loads(op.get("items", "[]")) if isinstance(op.get("items"), str) else op.get("items", [])
-        except Exception:
-            op["items"] = []
-    return ops
 
 
 # ---------- PDF Report ----------
