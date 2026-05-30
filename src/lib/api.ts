@@ -218,13 +218,15 @@ export async function checkConnection(service: string, key: string, url?: string
   }
 }
 
-export async function checkS3(): Promise<CheckResult> {
+export async function checkS3Direct(endpoint: string, accessKey: string, secretKey: string, bucket: string, region: string): Promise<CheckResult> {
   try {
-    const r = await fetch(`${API_BASE}/check/s3`, {
+    const r = await fetch(`${API_BASE}/check-connection`, {
       method: 'POST',
-      headers: authHeaders(),
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ service: 's3', key: accessKey, url: endpoint, secret: secretKey, bucket, region }),
     });
-    return await r.json();
+    const data = await r.json();
+    return { ok: data.success ?? false, message: data.message, error: data.error };
   } catch {
     return { ok: false, error: 'Сетевая ошибка' };
   }

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   fetchSettings, saveSettings, createPayment, confirmPayment,
   AISettings, fetchHealth, HealthStatus,
-  checkS3, checkConnection, CheckResult,
+  checkS3Direct, checkConnection, CheckResult,
 } from '../lib/api';
 
 type Tariff = 'free' | 'start' | 'business' | 'pro';
@@ -325,8 +325,8 @@ export default function Brain() {
         <legend className="text-cyan-400 font-semibold text-sm">☁️ S3 хранилище (Яндекс Облако / VK Cloud / AWS)</legend>
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs text-zinc-500">Изображения чеков сохраняются в объектное хранилище.</p>
-          <button
-            onClick={() => runCheck('s3', checkS3)}
+            <button
+              onClick={() => runCheck('s3', () => checkS3Direct(cfg.s3_endpoint, cfg.s3_access_key, cfg.s3_secret_key, cfg.s3_bucket, cfg.s3_region))}
             disabled={!cfg.s3_endpoint || !cfg.s3_access_key || checking.s3}
             className="text-xs px-2 py-1 bg-cyan-600/30 hover:bg-cyan-600/50 disabled:opacity-30 text-cyan-300 rounded-lg transition"
           >

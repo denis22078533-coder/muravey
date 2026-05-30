@@ -511,6 +511,9 @@ class CheckConnectionRequest(BaseModel):
     service: str
     key: str = ""
     url: str = ""
+    secret: str = ""
+    bucket: str = ""
+    region: str = ""
 
 @app.post("/api/check-connection")
 async def check_connection(req: CheckConnectionRequest):
@@ -531,6 +534,24 @@ async def check_connection(req: CheckConnectionRequest):
                     headers={"Authorization": f"Bearer {req.key}", "Content-Type": "application/json"},
                     json={"model": "openai/gpt-4o-mini", "messages": [{"role": "user", "content": "Hi"}], "max_tokens": 5},
                 )
+            elif service == "s3":
+                import boto3
+                from botocore.client import Config
+                endpoint = req.url or ""
+                if not endpoint or not req.key:
+                    return {"success": False, "error": "S3 endpoint и access_key обязательны"}
+                s3 = boto3.client(
+                    "s3",
+                    endpoint_url=endpoint if endpoint.startswith("http") else f"https://{endpoint}",
+                    aws_access_key_id=req.key,
+                    aws_secret_access_key=req.secret,
+                    config=Config(signature_version="s3v4", connect_timeout=10, read_timeout=10),
+                    region_name=req.region or "ru-central1",
+                )
+                if req.bucket:
+                    s3.head_bucket(Bucket=req.bucket)
+                    return {"success": True, "message": f"S3 доступен, бакет «{req.bucket}» найден"}
+                return {"success": True, "message": "S3 доступен (бакет не указан)"}
             else:
                 return {"success": False, "error": f"Неизвестный сервис: {service}"}
 
