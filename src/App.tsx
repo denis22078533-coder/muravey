@@ -7,39 +7,20 @@ import Auth from './pages/Auth';
 import { fetchMe, clearToken, User } from './lib/api';
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Временный bypass авторизации — всегда залогинены как гость
+  const [user, setUser] = useState<User | null>({
+    id: 'guest',
+    email: 'guest@babki.local',
+    tariff: 'free',
+  });
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    fetchMe().then(u => {
-      if (u) setUser(u);
-      setLoading(false);
-    });
-  }, []);
-
-  const handleAuth = (u: User) => {
-    setUser(u);
-    navigate('/');
-  };
 
   const handleLogout = () => {
     clearToken();
     setUser(null);
     navigate('/');
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <p className="text-amber-400 animate-pulse">Загрузка...</p>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Auth onAuth={handleAuth} />;
-  }
 
   return (
     <div className="min-h-screen flex flex-col bg-zinc-950 text-zinc-100">
@@ -78,6 +59,7 @@ export default function App() {
             🧠 Мозг
           </NavLink>
         </nav>
+        {user && (
         <div className="flex items-center gap-2">
           <span className="text-xs text-zinc-500 hidden sm:inline">{user.email}</span>
           <span className={`text-xs px-2 py-0.5 rounded-full ${
@@ -92,11 +74,12 @@ export default function App() {
             Выйти
           </button>
         </div>
+        )}
       </header>
 
       <main className="flex-1 p-4">
         <Routes>
-          <Route path="/" element={<Home user={user} />} />
+          <Route path="/" element={<Home user={user!} />} />
           <Route path="/brain" element={<Brain />} />
           <Route path="/tax" element={<Tax />} />
         </Routes>
