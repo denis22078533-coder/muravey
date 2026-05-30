@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   fetchSettings, saveSettings, createPayment, confirmPayment,
   AISettings, fetchHealth, HealthStatus,
-  checkProxyApi, checkDeepSeek, checkS3, CheckResult,
+  checkProxyApi, checkDeepSeek, checkS3, checkConnection, CheckResult,
 } from '../lib/api';
 
 type Tariff = 'free' | 'start' | 'business' | 'pro';
@@ -38,9 +38,11 @@ function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
 }
 
 export default function Brain() {
-  const saveToLocalStorage = (key, value) => {
-    localStorage.setItem(key, value);
-    flash(`✅ ${key} сохранено!`, true);
+  const saveToLocalStorage = (key: string, value: string) => {
+    try {
+      localStorage.setItem(key, value);
+      flash(`✅ ${key} сохранено!`, true);
+    } catch { /* silent */ }
   };
   const [cfg, setCfg] = useState<AISettings>({
     proxyapi_key: '', proxyapi_url: 'https://proxyapi.ru',
@@ -73,6 +75,11 @@ export default function Brain() {
 
   const loadData = useCallback(async () => {
     const [s, h] = await Promise.all([fetchSettings(), fetchHealth()]);
+    // Загружаем DATABASE_URL из localStorage если нет с сервера
+    const savedDbUrl = localStorage.getItem('DATABASE_URL');
+    if (!s.db_url && savedDbUrl) {
+      s.db_url = savedDbUrl;
+    }
     setCfg(s);
     setHealth(h);
     setLoading(false);
@@ -86,6 +93,9 @@ export default function Brain() {
   };
 
   const handleSaveAll = async () => {
+    if (cfg.db_url) {
+      saveToLocalStorage('DATABASE_URL', cfg.db_url);
+    }
     await saveSettings(cfg);
     flash('✅ Все настройки сохранены', true);
     loadData();
@@ -198,7 +208,7 @@ export default function Brain() {
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-purple-400">🌐 ProxyAPI (распознавание чеков)</span>
             <button
-              onClick={() => runCheck('proxyapi', checkProxyApi)}
+              onClick={() => runCheck('proxyapi', () => checkConnection('proxyapi', cfg.proxyapi_key, cfg.proxyapi_url))}
               disabled={!cfg.proxyapi_key || checking.proxyapi}
               className="text-xs px-2 py-1 bg-purple-600/30 hover:bg-purple-600/50 disabled:opacity-30 text-purple-300 rounded-lg transition"
             >
@@ -237,7 +247,7 @@ export default function Brain() {
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-blue-400">🤖 DeepSeek V3 (чат-помощник)</span>
             <button
-              onClick={() => runCheck('deepseek', checkDeepSeek)}
+              onClick={() => runCheck('deepseek', () => checkConnection('deepseek', cfg.deepseek_key))}
               disabled={!cfg.deepseek_key || checking.deepseek}
               className="text-xs px-2 py-1 bg-blue-600/30 hover:bg-blue-600/50 disabled:opacity-30 text-blue-300 rounded-lg transition"
             >

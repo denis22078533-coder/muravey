@@ -292,6 +292,20 @@ export async function checkDeepSeek(): Promise<CheckResult> {
   }
 }
 
+export async function checkConnection(service: string, key: string, url?: string): Promise<CheckResult> {
+  try {
+    const r = await fetch(`${API_BASE}/check-connection`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ service, key, url: url || '' }),
+    });
+    const data = await r.json();
+    return { ok: data.success ?? false, message: data.message, error: data.error };
+  } catch {
+    return { ok: false, error: 'Сетевая ошибка' };
+  }
+}
+
 export async function checkS3(): Promise<CheckResult> {
   try {
     const r = await fetch(`${API_BASE}/check/s3`, {

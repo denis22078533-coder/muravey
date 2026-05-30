@@ -520,6 +520,41 @@ async def confirm_payment_endpoint(request: Request):
     return {"error": "Payment not found"}
 
 
+class CheckConnectionRequest(BaseModel):
+    service: str
+    key: str = ""
+    url: str = ""
+
+@app.post("/api/check-connection")
+async def check_connection(req: CheckConnectionRequest):
+    """Проверка соединения с внешним API. Принимает ключ напрямую для обхода CORS."""
+    service = req.service.lower()
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            if service == "deepseek":
+                resp = await client.post(
+                    "https://api.deepseek.com/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {req.key}", "Content-Type": "application/json"},
+                    json={"model": "deepseek-chat", "messages": [{"role": "user", "content": "Hi"}], "max_tokens": 5},
+                )
+            elif service == "proxyapi":
+                check_url = req.url.rstrip("/") + "/chat/completions" if req.url else "https://proxyapi.ru/chat/completions"
+                resp = await client.post(
+                    check_url,
+                    headers={"Authorization": f"Bearer {req.key}", "Content-Type": "application/json"},
+                    json={"model": "openai/gpt-4o-mini", "messages": [{"role": "user", "content": "Hi"}], "max_tokens": 5},
+                )
+            else:
+                return {"success": False, "error": f"Неизвестный сервис: {service}"}
+
+            if resp.status_code in (200, 400, 429):
+                return {"success": True, "message": f"{service} отвечает (код {resp.status_code})"}
+            return {"success": False, "error": f"{service} вернул {resp.status_code}: {resp.text[:200]}"}
+    except httpx.TimeoutException:
+        return {"success": False, "error": f"Таймаут соединения с {service}"}
+    except Exception as e:
+        return {"success": False, "error": f"Ошибка соединения: {str(e)[:200]}"}
+
 # ---------- Health & Connection Checks ----------
 
 @app.get("/api/health")
