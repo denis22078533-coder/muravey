@@ -273,7 +273,7 @@ async def scan_receipt(req: ScanRequest, request: Request):
     # Get settings from DB (keys hidden from frontend)
     settings = get_settings_raw(uid)
     proxyapi_key = settings.get("proxyapi_key", "")
-    proxyapi_url = settings.get("proxyapi_url", "https://proxyapi.ru")
+    proxyapi_url = settings.get("proxyapi_url", "https://api.proxyapi.ru/openai/v1")
     selected_model = settings.get("selected_model", "openai/gpt-4o-mini")
 
     if not proxyapi_key:
@@ -538,7 +538,7 @@ async def check_connection(req: CheckConnectionRequest):
                     json={"model": "deepseek-chat", "messages": [{"role": "user", "content": "Hi"}], "max_tokens": 5},
                 )
             elif service == "proxyapi":
-                check_url = req.url.rstrip("/") + "/chat/completions" if req.url else "https://proxyapi.ru/chat/completions"
+                check_url = req.url.rstrip("/") + "/chat/completions" if req.url else "https://api.proxyapi.ru/openai/v1/chat/completions"
                 resp = await client.post(
                     check_url,
                     headers={"Authorization": f"Bearer {req.key}", "Content-Type": "application/json"},
@@ -604,7 +604,7 @@ async def check_proxyapi(request: Request):
     
     settings = get_settings_raw(uid)
     key = settings.get("proxyapi_key", "")
-    url = settings.get("proxyapi_url", "https://proxyapi.ru")
+    url = settings.get("proxyapi_url", "https://api.proxyapi.ru/openai/v1")
     
     if not key:
         return {"ok": False, "error": "Ключ ProxyAPI не задан"}

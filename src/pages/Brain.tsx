@@ -45,7 +45,7 @@ export default function Brain() {
     } catch { /* silent */ }
   };
   const [cfg, setCfg] = useState<AISettings>({
-    proxyapi_key: '', proxyapi_url: 'https://proxyapi.ru',
+    proxyapi_key: '', proxyapi_url: 'https://api.proxyapi.ru/openai/v1',
     deepseek_key: '', selected_model: 'openai/gpt-4o-mini',
     s3_endpoint: '', s3_access_key: '', s3_secret_key: '', s3_bucket: '',
     s3_region: '', db_url: '',
@@ -242,8 +242,8 @@ export default function Brain() {
               </div>
             </div>
             <div>
-              <label className="text-xs text-zinc-500 block mb-0.5">URL (обычно https://proxyapi.ru)</label>
-              <input type="text" placeholder="https://proxyapi.ru" value={cfg.proxyapi_url}
+              <label className="text-xs text-zinc-500 block mb-0.5">URL (обычно https://api.proxyapi.ru/openai/v1)</label>
+              <input type="text" placeholder="https://api.proxyapi.ru/openai/v1" value={cfg.proxyapi_url}
                 onChange={e => update('proxyapi_url', e.target.value)}
                 className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-purple-500" />
             </div>

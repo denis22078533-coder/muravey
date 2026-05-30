@@ -150,7 +150,7 @@ export async function fetchSettings(): Promise<AISettings> {
     if (r.ok) return await r.json();
   } catch { /* */ }
   return {
-    proxyapi_key: '', proxyapi_url: 'https://proxyapi.ru', deepseek_key: '',
+    proxyapi_key: '', proxyapi_url: 'https://api.proxyapi.ru/openai/v1', deepseek_key: '',
     selected_model: 'openai/gpt-4o-mini',
     s3_endpoint: '', s3_access_key: '', s3_secret_key: '', s3_bucket: '',
     s3_region: '', db_url: '',
