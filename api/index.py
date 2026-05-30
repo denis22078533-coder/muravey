@@ -514,6 +514,7 @@ class CheckConnectionRequest(BaseModel):
     secret: str = ""
     bucket: str = ""
     region: str = ""
+    database_url: str = ""
 
 @app.post("/api/check-connection")
 async def check_connection(req: CheckConnectionRequest):
@@ -545,13 +546,28 @@ async def check_connection(req: CheckConnectionRequest):
                     endpoint_url=endpoint if endpoint.startswith("http") else f"https://{endpoint}",
                     aws_access_key_id=req.key,
                     aws_secret_access_key=req.secret,
-                    config=Config(signature_version="s3v4", connect_timeout=10, read_timeout=10),
+                    config=Config(signature_version="s3v4", connect_timeout=5, read_timeout=5, retries={"max_attempts": 1}),
                     region_name=req.region or "ru-central1",
                 )
                 if req.bucket:
                     s3.head_bucket(Bucket=req.bucket)
                     return {"success": True, "message": f"S3 доступен, бакет «{req.bucket}» найден"}
                 return {"success": True, "message": "S3 доступен (бакет не указан)"}
+            elif service == "supabase":
+                db_url = req.database_url or os.getenv("DATABASE_URL", "")
+                if not db_url:
+                    return {"success": False, "error": "DATABASE_URL не задан"}
+                from sqlalchemy import create_engine as ce
+                temp_engine = ce(db_url, echo=False, connect_args={"connect_timeout": 3})
+                try:
+                    with temp_engine.connect() as conn:
+                        conn.execute(text("SELECT 1"))
+                    init_db()
+                    return {"success": True, "message": "Supabase доступен, БД инициализирована"}
+                except Exception as dbe:
+                    return {"success": False, "error": f"Ошибка подключения к Supabase: {str(dbe)[:200]}"}
+                finally:
+                    temp_engine.dispose()
             else:
                 return {"success": False, "error": f"Неизвестный сервис: {service}"}
 

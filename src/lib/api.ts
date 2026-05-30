@@ -218,6 +218,20 @@ export async function checkConnection(service: string, key: string, url?: string
   }
 }
 
+export async function checkSupabaseDirect(dbUrl: string): Promise<CheckResult> {
+  try {
+    const r = await fetch(`${API_BASE}/check-connection`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ service: 'supabase', database_url: dbUrl }),
+    });
+    const data = await r.json();
+    return { ok: data.success ?? false, message: data.message, error: data.error };
+  } catch {
+    return { ok: false, error: 'Сетевая ошибка' };
+  }
+}
+
 export async function checkS3Direct(endpoint: string, accessKey: string, secretKey: string, bucket: string, region: string): Promise<CheckResult> {
   try {
     const r = await fetch(`${API_BASE}/check-connection`, {

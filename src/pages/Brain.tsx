@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   fetchSettings, saveSettings, createPayment, confirmPayment,
   AISettings, fetchHealth, HealthStatus,
-  checkS3Direct, checkConnection, CheckResult,
+  checkS3Direct, checkSupabaseDirect, checkConnection, CheckResult,
 } from '../lib/api';
 
 type Tariff = 'free' | 'start' | 'business' | 'pro';
@@ -305,6 +305,21 @@ export default function Brain() {
 {/* ===== DATABASE ===== */}
       <fieldset className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
         <legend className="text-purple-400 font-semibold text-sm">💾 Database Settings</legend>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs text-zinc-500">Подключение к Supabase PostgreSQL.</p>
+          <button
+            onClick={() => runCheck('supabase', () => checkSupabaseDirect(cfg.db_url))}
+            disabled={!cfg.db_url || checking.supabase}
+            className="text-xs px-2 py-1 bg-purple-600/30 hover:bg-purple-600/50 disabled:opacity-30 text-purple-300 rounded-lg transition"
+          >
+            {checking.supabase ? '⏳ Проверка...' : '🩺 Проверить соединение'}
+          </button>
+        </div>
+        {checkResults.supabase && (
+          <div className={`text-xs p-2 rounded-lg ${checkResults.supabase.ok ? 'bg-green-900/20 text-green-400' : 'bg-red-900/20 text-red-400'}`}>
+            {checkResults.supabase.message || checkResults.supabase.error}
+          </div>
+        )}
         <div>
           <label className="text-xs text-zinc-500 block mb-1">Database URL (Supabase)</label>
           <input
