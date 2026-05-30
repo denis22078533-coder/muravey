@@ -519,6 +519,7 @@ class CheckConnectionRequest(BaseModel):
 @app.post("/api/check-connection")
 async def check_connection(req: CheckConnectionRequest):
     """Проверка соединения с внешним API. Принимает ключ напрямую для обхода CORS."""
+    print(f"[check-connection] service={req.service} url={req.url[:80] if req.url else ''} bucket={req.bucket} region={req.region} db_url={'***' if req.database_url else ''}")
     service = req.service.lower()
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:

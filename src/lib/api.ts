@@ -212,9 +212,12 @@ export async function checkConnection(service: string, key: string, url?: string
       body: JSON.stringify({ service, key, url: url || '' }),
     });
     const data = await r.json();
+    if (!r.ok) {
+      return { ok: false, error: data?.error || data?.detail || `Ошибка сервера (${r.status})` };
+    }
     return { ok: data.success ?? false, message: data.message, error: data.error };
-  } catch {
-    return { ok: false, error: 'Сетевая ошибка' };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Сетевая ошибка' };
   }
 }
 
@@ -226,9 +229,12 @@ export async function checkSupabaseDirect(dbUrl: string): Promise<CheckResult> {
       body: JSON.stringify({ service: 'supabase', database_url: dbUrl }),
     });
     const data = await r.json();
+    if (!r.ok) {
+      return { ok: false, error: data?.error || data?.detail || `Ошибка сервера (${r.status})` };
+    }
     return { ok: data.success ?? false, message: data.message, error: data.error };
-  } catch {
-    return { ok: false, error: 'Сетевая ошибка' };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Сетевая ошибка' };
   }
 }
 
@@ -240,9 +246,12 @@ export async function checkS3Direct(endpoint: string, accessKey: string, secretK
       body: JSON.stringify({ service: 's3', key: accessKey, url: endpoint, secret: secretKey, bucket, region }),
     });
     const data = await r.json();
+    if (!r.ok) {
+      return { ok: false, error: data?.error || data?.detail || `Ошибка сервера (${r.status})` };
+    }
     return { ok: data.success ?? false, message: data.message, error: data.error };
-  } catch {
-    return { ok: false, error: 'Сетевая ошибка' };
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Сетевая ошибка' };
   }
 }
 
