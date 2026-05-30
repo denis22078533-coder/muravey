@@ -64,16 +64,18 @@ export interface Operation {
 }
 
 export interface AISettings {
-  proxyapi_key: string;
-  proxyapi_url: string;
-  deepseek_key: string;
-  selected_model: string;
-  s3_endpoint: string;
-  s3_access_key: string;
-  s3_secret_key: string;
-  s3_bucket: string;
-  sbp_tbank_key: string;
-  sbp_merchant_id: string;
+    proxyapi_key: string;
+    proxyapi_url: string;
+    deepseek_key: string;
+    selected_model: string;
+    s3_endpoint: string;
+    s3_access_key: string;
+    s3_secret_key: string;
+    s3_bucket: string;
+    s3_region: string;
+    db_url: string;
+    sbp_tbank_key: string;
+    sbp_merchant_id: string;
 }
 
 export interface ReportEntry {
@@ -151,6 +153,7 @@ export async function fetchSettings(): Promise<AISettings> {
     proxyapi_key: '', proxyapi_url: 'https://proxyapi.ru', deepseek_key: '',
     selected_model: 'openai/gpt-4o-mini',
     s3_endpoint: '', s3_access_key: '', s3_secret_key: '', s3_bucket: '',
+    s3_region: '', db_url: '',
     sbp_tbank_key: '', sbp_merchant_id: '',
   };
 }
@@ -226,7 +229,7 @@ export async function createPayment(tariff: string): Promise<{ payment_id?: stri
   return await r.json();
 }
 
-export async function confirmPayment(paymentId: string, tariff: string): Promise<{ status?: string; error?: string }> {
+export async function confirmPayment(paymentId: string, tariff: string): Promise<{ status?: string; tariff?: string; error?: string }> {
   const r = await fetch(`${API_BASE}/payments/confirm`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },

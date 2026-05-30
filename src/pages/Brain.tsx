@@ -38,10 +38,15 @@ function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
 }
 
 export default function Brain() {
+  const saveToLocalStorage = (key, value) => {
+    localStorage.setItem(key, value);
+    flash(`✅ ${key} сохранено!`, true);
+  };
   const [cfg, setCfg] = useState<AISettings>({
     proxyapi_key: '', proxyapi_url: 'https://proxyapi.ru',
     deepseek_key: '', selected_model: 'openai/gpt-4o-mini',
     s3_endpoint: '', s3_access_key: '', s3_secret_key: '', s3_bucket: '',
+    s3_region: '', db_url: '',
     sbp_tbank_key: '', sbp_merchant_id: '',
   });
   const [loading, setLoading] = useState(true);
@@ -269,7 +274,26 @@ export default function Brain() {
         </div>
       </fieldset>
 
-      {/* ===== S3 ===== */}
+{/* ===== S3 ===== */}
+{/* ===== DATABASE ===== */}
+      <fieldset className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
+        <legend className="text-purple-400 font-semibold text-sm">💾 Database Settings</legend>
+        <div>
+          <label className="text-xs text-zinc-500 block mb-1">Database URL (Supabase)</label>
+          <input
+            type="text"
+            placeholder="postgresql://user:pass@host:port/db"
+            value={cfg.db_url || ""}
+            onChange={(e) => update("db_url", e.target.value)}
+            onBlur={() => saveToLocalStorage("DATABASE_URL", cfg.db_url)}
+            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+          />
+          <p className="text-xs text-zinc-600 mt-1">
+            Где взять? 🠖 Зарегистрируйтесь на <a href="https://supabase.com" className="text-purple-400 underline">supabase.com</a>, создайте проект,
+            скопируйте URL подключения из Overview → API → Config.
+          </p>
+        </div>
+      </fieldset>
       <fieldset className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
         <legend className="text-cyan-400 font-semibold text-sm">☁️ S3 хранилище (Яндекс Облако / VK Cloud / AWS)</legend>
         <div className="flex items-center justify-between mb-2">
@@ -329,7 +353,14 @@ export default function Brain() {
         </details>
       </fieldset>
 
-      {/* ===== СБП ===== */}
+      {/* ===== S3 REGION ===== */}
+      <fieldset className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
+        <legend className="text-teal-400 font-semibold text-sm">🌎 S3 Region</legend>
+        <input type="text" value={cfg.s3_region || ""}
+          onChange={(e) => {
+              update("s3_region", e.target.value);
+              saveToLocalStorage("S3_REGION", e.target.value);}}/>
+      </fieldset>
       <fieldset className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
         <legend className="text-green-400 font-semibold text-sm">💳 СБП (приём оплаты)</legend>
         <p className="text-xs text-zinc-500">Настройте приём платежей через Систему Быстрых Платежей (Т-Банк).</p>
