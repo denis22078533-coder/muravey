@@ -1,4 +1,4 @@
-"""FastAPI backend for Babki Scan — PostgreSQL + JWT auth + AI receipt scanning."""
+"""FastAPI backend for СканУчёт БДА Групп — PostgreSQL + JWT auth + AI receipt scanning."""
 import json
 import io
 import uuid
@@ -409,7 +409,7 @@ async def generate_pdf(request: Request):
         else:
             pdf.set_font("Helvetica", size=16)
 
-pdf.cell(0, 10, "НАЛОГОВЫЙ ОТЧЁТ — СканУчёт БДА Групп", ln=True, align="C")
+        pdf.cell(0, 10, "НАЛОГОВЫЙ ОТЧЁТ — СканУчёт БДА Групп", ln=True, align="C")
         pdf.ln(5)
         if font_loaded:
             pdf.set_font("DejaVu", "", 10)
