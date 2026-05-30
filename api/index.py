@@ -22,7 +22,7 @@ from database import (
     create_payment, confirm_payment,
 )
 
-app = FastAPI(title="Babki Scan API")
+app = FastAPI(title="СканУчёт БДА Групп")
 handler = Mangum(app)
 
 app.add_middleware(
@@ -409,7 +409,7 @@ async def generate_pdf(request: Request):
         else:
             pdf.set_font("Helvetica", size=16)
 
-        pdf.cell(0, 10, "НАЛОГОВЫЙ ОТЧЁТ — Бабки Скан", ln=True, align="C")
+pdf.cell(0, 10, "НАЛОГОВЫЙ ОТЧЁТ — СканУчёт БДА Групп", ln=True, align="C")
         pdf.ln(5)
         if font_loaded:
             pdf.set_font("DejaVu", "", 10)
