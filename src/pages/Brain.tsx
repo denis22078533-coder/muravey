@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   fetchSettings, saveSettings, createPayment, confirmPayment,
   AISettings, fetchHealth, HealthStatus,
-  checkProxyApi, checkDeepSeek, checkS3, checkConnection, CheckResult,
+  checkS3, checkConnection, CheckResult,
 } from '../lib/api';
 
 type Tariff = 'free' | 'start' | 'business' | 'pro';

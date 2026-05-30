@@ -268,30 +268,6 @@ export async function fetchHealth(): Promise<HealthStatus | null> {
   return null;
 }
 
-export async function checkProxyApi(): Promise<CheckResult> {
-  try {
-    const r = await fetch(`${API_BASE}/check/proxyapi`, {
-      method: 'POST',
-      headers: authHeaders(),
-    });
-    return await r.json();
-  } catch {
-    return { ok: false, error: 'Сетевая ошибка' };
-  }
-}
-
-export async function checkDeepSeek(): Promise<CheckResult> {
-  try {
-    const r = await fetch(`${API_BASE}/check/deepseek`, {
-      method: 'POST',
-      headers: authHeaders(),
-    });
-    return await r.json();
-  } catch {
-    return { ok: false, error: 'Сетевая ошибка' };
-  }
-}
-
 export async function checkConnection(service: string, key: string, url?: string): Promise<CheckResult> {
   try {
     const r = await fetch(`${API_BASE}/check-connection`, {
