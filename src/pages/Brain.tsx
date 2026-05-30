@@ -76,7 +76,7 @@ export default function Brain() {
   const loadData = useCallback(async () => {
     const [s, h] = await Promise.all([fetchSettings(), fetchHealth()]);
     // Загружаем сохраненные значения из localStorage если нет с сервера
-    const keys = ['proxyapi_key', 'deepseek_key', 's3_endpoint', 's3_access_key', 's3_secret_key', 's3_bucket', 'sbp_tbank_key', 'sbp_merchant_id', 'db_url'];
+    const keys = ['proxyapi_key', 'deepseek_key', 's3_endpoint', 's3_access_key', 's3_secret_key', 's3_bucket', 's3_region', 'sbp_tbank_key', 'sbp_merchant_id', 'db_url'];
     keys.forEach(k => {
       const stored = localStorage.getItem(k);
       if (stored && !(s as any)[k]) {
@@ -103,6 +103,7 @@ export default function Brain() {
       s3_access_key: cfg.s3_access_key,
       s3_secret_key: cfg.s3_secret_key,
       s3_bucket: cfg.s3_bucket,
+      s3_region: cfg.s3_region || '',
       db_url: cfg.db_url || '',
       sbp_tbank_key: cfg.sbp_tbank_key,
       sbp_merchant_id: cfg.sbp_merchant_id,
@@ -382,10 +383,13 @@ export default function Brain() {
       {/* ===== S3 REGION ===== */}
       <fieldset className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
         <legend className="text-teal-400 font-semibold text-sm">🌎 S3 Region</legend>
-        <input type="text" value={cfg.s3_region || ""}
-          onChange={(e) => {
-              update("s3_region", e.target.value);
-              saveToLocalStorage("S3_REGION", e.target.value);}}/>
+        <input type="text" placeholder="ru-central1" value={cfg.s3_region || ""}
+          onChange={(e) => update("s3_region", e.target.value)}
+          onBlur={() => { if (cfg.s3_region) saveToLocalStorage("s3_region", cfg.s3_region); }}
+          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-teal-500"/>
+        <p className="text-xs text-zinc-600 mt-1">
+          Регион S3 (например: ru-central1, us-east-1, auto). Для Яндекс Облака — ru-central1.
+        </p>
       </fieldset>
       <fieldset className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
         <legend className="text-green-400 font-semibold text-sm">💳 СБП (приём оплаты)</legend>

@@ -108,6 +108,8 @@ class SettingsInput(BaseModel):
     s3_access_key: str = ""
     s3_secret_key: str = ""
     s3_bucket: str = ""
+    s3_region: str = ""
+    db_url: str = ""
     sbp_tbank_key: str = ""
     sbp_merchant_id: str = ""
 
@@ -228,7 +230,7 @@ async def create_report(entry: ReportInput, request: Request):
 
 # ---------- S3 Upload ----------
 
-def upload_to_s3(endpoint: str, access_key: str, secret_key: str, bucket: str, image_bytes: bytes) -> str | None:
+def upload_to_s3(endpoint: str, access_key: str, secret_key: str, bucket: str, image_bytes: bytes, region: str = "ru-central1") -> str | None:
     try:
         import boto3
         from botocore.client import Config
@@ -239,7 +241,7 @@ def upload_to_s3(endpoint: str, access_key: str, secret_key: str, bucket: str, i
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
             config=Config(signature_version="s3v4"),
-            region_name="ru-central1",
+            region_name=region or "ru-central1",
         )
         key = f"receipts/{uuid.uuid4().hex}.jpg"
         s3.upload_fileobj(io.BytesIO(image_bytes), bucket, key, ExtraArgs={"ContentType": "image/jpeg"})
@@ -285,12 +287,13 @@ async def scan_receipt(req: ScanRequest, request: Request):
     s3_access = settings.get("s3_access_key", "")
     s3_secret = settings.get("s3_secret_key", "")
     s3_bucket = settings.get("s3_bucket", "")
+    s3_region = settings.get("s3_region", "ru-central1")
     if s3_endpoint and s3_access:
-        s3_cfg = {"endpoint": s3_endpoint, "access_key": s3_access, "secret_key": s3_secret, "bucket": s3_bucket}
+        s3_cfg = {"endpoint": s3_endpoint, "access_key": s3_access, "secret_key": s3_secret, "bucket": s3_bucket, "region": s3_region}
 
     image_url: str | None = None
     if s3_cfg:
-        image_url = upload_to_s3(s3_cfg["endpoint"], s3_cfg["access_key"], s3_cfg["secret_key"], s3_cfg["bucket"], image_bytes)
+        image_url = upload_to_s3(s3_cfg["endpoint"], s3_cfg["access_key"], s3_cfg["secret_key"], s3_cfg["bucket"], image_bytes, s3_cfg.get("region", "ru-central1"))
     if image_url is None:
         image_url = f"data:image/jpeg;base64,{image_data}"
 
@@ -591,6 +594,7 @@ async def check_s3(request: Request):
     access = settings.get("s3_access_key", "")
     secret = settings.get("s3_secret_key", "")
     bucket = settings.get("s3_bucket", "")
+    s3_region = settings.get("s3_region", "ru-central1")
     
     if not endpoint or not access:
         return {"ok": False, "error": "S3 настройки неполные (endpoint + access_key обязательны)"}
@@ -605,7 +609,7 @@ async def check_s3(request: Request):
             aws_access_key_id=access,
             aws_secret_access_key=secret,
             config=Config(signature_version="s3v4", connect_timeout=10, read_timeout=10),
-            region_name="ru-central1",
+            region_name=s3_region or "ru-central1",
         )
         if bucket:
             s3.head_bucket(Bucket=bucket)

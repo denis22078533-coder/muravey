@@ -62,6 +62,8 @@ def init_db():
                 s3_access_key TEXT DEFAULT '',
                 s3_secret_key TEXT DEFAULT '',
                 s3_bucket TEXT DEFAULT '',
+                s3_region TEXT DEFAULT 'ru-central1',
+                db_url TEXT DEFAULT '',
                 sbp_tbank_key TEXT DEFAULT '',
                 sbp_merchant_id TEXT DEFAULT '',
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -208,8 +210,8 @@ def count_operations_this_month(user_id: str) -> int:
 
 ALLOWED_SETTINGS = {
     "proxyapi_key", "proxyapi_url", "deepseek_key", "selected_model",
-    "s3_endpoint", "s3_access_key", "s3_secret_key", "s3_bucket",
-    "sbp_tbank_key", "sbp_merchant_id",
+    "s3_endpoint", "s3_access_key", "s3_secret_key", "s3_bucket", "s3_region",
+    "db_url", "sbp_tbank_key", "sbp_merchant_id",
 }
 
 
@@ -234,6 +236,8 @@ def get_settings(user_id: str) -> dict:
                 "s3_access_key": d.get("s3_access_key", ""),
                 "s3_secret_key": "***" if d.get("s3_secret_key") else "",
                 "s3_bucket": d.get("s3_bucket", ""),
+                "s3_region": d.get("s3_region", "ru-central1"),
+                "db_url": "***" if d.get("db_url") else "",
                 "sbp_tbank_key": "***" if d.get("sbp_tbank_key") else "",
                 "sbp_merchant_id": d.get("sbp_merchant_id", ""),
             }
