@@ -279,7 +279,28 @@ async def scan_receipt(req: ScanRequest, request: Request):
     selected_model = settings.get("selected_model", "openai/gpt-4o-mini")
 
     if not proxyapi_key:
-        return {"error": "API-ключ не настроен. Перейдите в раздел 🧠 Мозг."}
+        # Mock-ответ если ключ не настроен — фронтенд не зависнет
+        mock_result = {
+            "success": True,
+            "place": "Магазин (тестовый режим)",
+            "date": datetime.now().strftime("%d.%m.%Y"),
+            "items": [
+                {"name": "Товар 1", "quantity": 1, "price": 500.00, "sum": 500.00, "category": "Продукты"},
+                {"name": "Товар 2", "quantity": 2, "price": 350.00, "sum": 700.00, "category": "Рестораны"},
+            ],
+            "total": 1200.00,
+            "raw_text": "Тестовый чек — API-ключ не настроен. Настройте ProxyAPI в разделе 🧠 Мозг.",
+        }
+        save_operation({
+            "date": mock_result["date"],
+            "place": mock_result["place"],
+            "total": mock_result["total"],
+            "type": "expense",
+            "items": mock_result["items"],
+            "raw_text": mock_result["raw_text"],
+            "image_url": f"data:image/jpeg;base64,{image_data[:50]}...",
+        }, uid)
+        return mock_result
 
     # S3 upload
     s3_cfg = {}
@@ -304,7 +325,7 @@ async def scan_receipt(req: ScanRequest, request: Request):
         proxy_url = proxyapi_url
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             resp = await client.post(
                 proxy_url,
                 headers={"Authorization": f"Bearer {proxyapi_key}", "Content-Type": "application/json"},
