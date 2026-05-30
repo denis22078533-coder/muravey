@@ -211,7 +211,9 @@ export async function checkConnection(service: string, key: string, url?: string
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ service, key, url: url || '' }),
     });
-    const data = await r.json();
+    const text = await r.text();
+    let data: any = {};
+    try { data = JSON.parse(text); } catch { data = {}; }
     if (!r.ok) {
       return { ok: false, error: data?.error || data?.detail || `Ошибка сервера (${r.status})` };
     }
@@ -228,7 +230,9 @@ export async function checkSupabaseDirect(dbUrl: string): Promise<CheckResult> {
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ service: 'supabase', database_url: dbUrl }),
     });
-    const data = await r.json();
+    const text = await r.text();
+    let data: any = {};
+    try { data = JSON.parse(text); } catch { data = {}; }
     if (!r.ok) {
       return { ok: false, error: data?.error || data?.detail || `Ошибка сервера (${r.status})` };
     }
@@ -245,7 +249,9 @@ export async function checkS3Direct(endpoint: string, accessKey: string, secretK
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ service: 's3', key: accessKey, url: endpoint, secret: secretKey, bucket, region }),
     });
-    const data = await r.json();
+    const text = await r.text();
+    let data: any = {};
+    try { data = JSON.parse(text); } catch { data = {}; }
     if (!r.ok) {
       return { ok: false, error: data?.error || data?.detail || `Ошибка сервера (${r.status})` };
     }

@@ -519,66 +519,74 @@ class CheckConnectionRequest(BaseModel):
 @app.post("/api/check-connection")
 async def check_connection(req: CheckConnectionRequest):
     """Проверка соединения с внешним API. Принимает ключ напрямую для обхода CORS."""
-    print(f"[check-connection] service={req.service} url={req.url[:80] if req.url else ''} bucket={req.bucket} region={req.region} db_url={'***' if req.database_url else ''}")
-    service = req.service.lower()
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            if service == "deepseek":
-                resp = await client.post(
-                    "https://api.deepseek.com/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {req.key}", "Content-Type": "application/json"},
-                    json={"model": "deepseek-chat", "messages": [{"role": "user", "content": "Hi"}], "max_tokens": 5},
-                )
-            elif service == "proxyapi":
-                check_url = req.url.rstrip("/") + "/chat/completions" if req.url else "https://api.proxyapi.ru/openai/v1/chat/completions"
-                resp = await client.post(
-                    check_url,
-                    headers={"Authorization": f"Bearer {req.key}", "Content-Type": "application/json"},
-                    json={"model": "openai/gpt-4o-mini", "messages": [{"role": "user", "content": "Hi"}], "max_tokens": 5},
-                )
-            elif service == "s3":
-                import boto3
-                from botocore.client import Config
-                endpoint = req.url or ""
-                if not endpoint or not req.key:
-                    return {"success": False, "error": "S3 endpoint и access_key обязательны"}
-                s3 = boto3.client(
-                    "s3",
-                    endpoint_url=endpoint if endpoint.startswith("http") else f"https://{endpoint}",
-                    aws_access_key_id=req.key,
-                    aws_secret_access_key=req.secret,
-                    config=Config(signature_version="s3v4", connect_timeout=5, read_timeout=5, retries={"max_attempts": 1}),
-                    region_name=req.region or "ru-central1",
-                )
-                if req.bucket:
-                    s3.head_bucket(Bucket=req.bucket)
-                    return {"success": True, "message": f"S3 доступен, бакет «{req.bucket}» найден"}
-                return {"success": True, "message": "S3 доступен (бакет не указан)"}
-            elif service == "supabase":
-                db_url = req.database_url or os.getenv("DATABASE_URL", "")
-                if not db_url:
-                    return {"success": False, "error": "DATABASE_URL не задан"}
-                from sqlalchemy import create_engine as ce
-                temp_engine = ce(db_url, echo=False, connect_args={"connect_timeout": 3})
-                try:
-                    with temp_engine.connect() as conn:
-                        conn.execute(text("SELECT 1"))
-                    init_db()
-                    return {"success": True, "message": "Supabase доступен, БД инициализирована"}
-                except Exception as dbe:
-                    return {"success": False, "error": f"Ошибка подключения к Supabase: {str(dbe)[:200]}"}
-                finally:
-                    temp_engine.dispose()
-            else:
-                return {"success": False, "error": f"Неизвестный сервис: {service}"}
+        print(f"[check-connection] service={req.service} url={req.url[:80] if req.url else ''} bucket={req.bucket} region={req.region} db_url={'***' if req.database_url else ''}")
+        service = req.service.lower()
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                if service == "deepseek":
+                    resp = await client.post(
+                        "https://api.deepseek.com/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {req.key}", "Content-Type": "application/json"},
+                        json={"model": "deepseek-chat", "messages": [{"role": "user", "content": "Hi"}], "max_tokens": 5},
+                    )
+                elif service == "proxyapi":
+                    check_url = req.url.rstrip("/") + "/chat/completions" if req.url else "https://api.proxyapi.ru/openai/v1/chat/completions"
+                    resp = await client.post(
+                        check_url,
+                        headers={"Authorization": f"Bearer {req.key}", "Content-Type": "application/json"},
+                        json={"model": "openai/gpt-4o-mini", "messages": [{"role": "user", "content": "Hi"}], "max_tokens": 5},
+                    )
+                elif service == "s3":
+                    import boto3
+                    from botocore.client import Config
+                    endpoint = req.url or ""
+                    if not endpoint or not req.key:
+                        return {"success": False, "error": "S3 endpoint и access_key обязательны"}
+                    s3 = boto3.client(
+                        "s3",
+                        endpoint_url=endpoint if endpoint.startswith("http") else f"https://{endpoint}",
+                        aws_access_key_id=req.key,
+                        aws_secret_access_key=req.secret,
+                        config=Config(signature_version="s3v4", connect_timeout=5, read_timeout=5, retries={"max_attempts": 1}),
+                        region_name=req.region or "ru-central1",
+                    )
+                    if req.bucket:
+                        s3.head_bucket(Bucket=req.bucket)
+                        return {"success": True, "message": f"S3 доступен, бакет «{req.bucket}» найден"}
+                    return {"success": True, "message": "S3 доступен (бакет не указан)"}
+                elif service == "supabase":
+                    db_url = req.database_url or os.getenv("DATABASE_URL", "")
+                    if not db_url:
+                        return {"success": False, "error": "DATABASE_URL не задан"}
+                    from sqlalchemy import create_engine as ce
+                    temp_engine = ce(db_url, echo=False, connect_args={"connect_timeout": 3})
+                    try:
+                        with temp_engine.connect() as conn:
+                            conn.execute(text("SELECT 1"))
+                        init_db()
+                        return {"success": True, "message": "Supabase доступен, БД инициализирована"}
+                    except Exception as dbe:
+                        return {"success": False, "error": f"Ошибка подключения к Supabase: {str(dbe)[:200]}"}
+                    finally:
+                        temp_engine.dispose()
+                else:
+                    return {"success": False, "error": f"Неизвестный сервис: {service}"}
 
-            if resp.status_code in (200, 400, 429):
-                return {"success": True, "message": f"{service} отвечает (код {resp.status_code})"}
-            return {"success": False, "error": f"{service} вернул {resp.status_code}: {resp.text[:200]}"}
-    except httpx.TimeoutException:
-        return {"success": False, "error": f"Таймаут соединения с {service}"}
+                if resp.status_code in (200, 400, 429):
+                    return {"success": True, "message": f"{service} отвечает (код {resp.status_code})"}
+                return {"success": False, "error": f"{service} вернул {resp.status_code}: {resp.text[:200]}"}
+        except httpx.TimeoutException:
+            return {"success": False, "error": f"Таймаут соединения с {service}"}
+        except Exception as e:
+            return {"success": False, "error": f"Ошибка соединения: {str(e)[:200]}"}
     except Exception as e:
-        return {"success": False, "error": f"Ошибка соединения: {str(e)[:200]}"}
+        import traceback
+        return {
+            "success": False,
+            "message": f"Ошибка на бэкенде: {str(e)}",
+            "traceback": traceback.format_exc()
+        }
 
 # ---------- Health & Connection Checks ----------
 
