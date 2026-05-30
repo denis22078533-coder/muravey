@@ -75,11 +75,14 @@ export default function Brain() {
 
   const loadData = useCallback(async () => {
     const [s, h] = await Promise.all([fetchSettings(), fetchHealth()]);
-    // Загружаем DATABASE_URL из localStorage если нет с сервера
-    const savedDbUrl = localStorage.getItem('DATABASE_URL');
-    if (!s.db_url && savedDbUrl) {
-      s.db_url = savedDbUrl;
-    }
+    // Загружаем сохраненные значения из localStorage если нет с сервера
+    const keys = ['proxyapi_key', 'deepseek_key', 's3_endpoint', 's3_access_key', 's3_secret_key', 's3_bucket', 'sbp_tbank_key', 'sbp_merchant_id', 'db_url'];
+    keys.forEach(k => {
+      const stored = localStorage.getItem(k);
+      if (stored && !(s as any)[k]) {
+        (s as any)[k] = stored;
+      }
+    });
     setCfg(s);
     setHealth(h);
     setLoading(false);
@@ -93,9 +96,22 @@ export default function Brain() {
   };
 
   const handleSaveAll = async () => {
-    if (cfg.db_url) {
-      saveToLocalStorage('DATABASE_URL', cfg.db_url);
-    }
+    const lsKeys: Record<string, string> = {
+      proxyapi_key: cfg.proxyapi_key,
+      deepseek_key: cfg.deepseek_key,
+      s3_endpoint: cfg.s3_endpoint,
+      s3_access_key: cfg.s3_access_key,
+      s3_secret_key: cfg.s3_secret_key,
+      s3_bucket: cfg.s3_bucket,
+      db_url: cfg.db_url || '',
+      sbp_tbank_key: cfg.sbp_tbank_key,
+      sbp_merchant_id: cfg.sbp_merchant_id,
+    };
+    Object.entries(lsKeys).forEach(([k, v]) => {
+      if (v) {
+        try { localStorage.setItem(k, v); } catch { /* silent */ }
+      }
+    });
     await saveSettings(cfg);
     flash('✅ Все настройки сохранены', true);
     loadData();
@@ -295,7 +311,7 @@ export default function Brain() {
             placeholder="postgresql://user:pass@host:port/db"
             value={cfg.db_url || ""}
             onChange={(e) => update("db_url", e.target.value)}
-            onBlur={() => saveToLocalStorage("DATABASE_URL", cfg.db_url)}
+            onBlur={() => { if (cfg.db_url) try { localStorage.setItem("db_url", cfg.db_url); } catch { /* silent */ } }}
             className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
           />
           <p className="text-xs text-zinc-600 mt-1">

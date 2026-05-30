@@ -296,7 +296,7 @@ export async function checkConnection(service: string, key: string, url?: string
   try {
     const r = await fetch(`${API_BASE}/check-connection`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ service, key, url: url || '' }),
     });
     const data = await r.json();
