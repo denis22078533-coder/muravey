@@ -408,7 +408,7 @@ export default function Brain() {
             <code className="block bg-zinc-950 p-2 rounded text-green-400 break-all">JWT_SECRET=ваш-секретный-ключ-минимум-32-символа</code>
 
             <p className="font-semibold text-zinc-300 mt-3">3. Хостинг бэкенда</p>
-            <p>Бэкенд проекта успешно адаптирован под Serverless-функции и разворачивается автоматически вместе с фронтендом. <b>(замечание более 50МБ исправлено)</b></p>
+              <p>Бэкенд проекта успешно адаптирован под Serverless-функции и разворачивается автоматически вместе с фронтендом. <b>(fpdf2 + boto3 проблема более 50MB исправлена)</b></p>
 
             <p className="font-semibold text-zinc-300 mt-3">4. Хостинг фронтенда</p>
             <p>Соберите: <code className="text-zinc-300">npm run build</code> → задеплойте папку <code className="text-zinc-300">dist/</code> на Vercel/Netlify.</p>
